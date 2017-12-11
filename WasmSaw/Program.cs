@@ -13,12 +13,15 @@ namespace WasmSaw {
             if (args.Length != 2)
                 throw new Exception("Expected: input.wasm output.msaw");
 
+            Console.Write("{0} ... ", args[0]);
+
             var config = CreateConfiguration();
             var amb = new AbstractModuleBuilder {
                 Configuration = config
             };
 
             using (var input = new BinaryReader(File.OpenRead(args[0]), Encoding.UTF8, false)) {
+                StreamingConvert(input, amb);
             }
 
             using (var output = File.OpenWrite(args[1])) {
@@ -26,17 +29,24 @@ namespace WasmSaw {
                 amb.SaveTo(output);
             }
 
+            Console.WriteLine(args[1]);
+
             if (Debugger.IsAttached)
                 Console.ReadLine();
         }
 
         private static Configuration CreateConfiguration () {
             var result = new Configuration {
+                Varints = false,
+                ExcludePrimitivesFromPartitioning = false
             };
 
             // result.AddSchema();
 
             return result;
+        }
+
+        private static void StreamingConvert (BinaryReader wasm, AbstractModuleBuilder amb) {
         }
     }
 }

@@ -38,16 +38,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
+    <Compile Include="WasmModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LibModuleSaw\LibModuleSaw.csproj">
       <Project>{c9baf8e3-7abc-4b92-a8fc-a55a325be057}</Project>
       <Name>LibModuleSaw</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
