@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public static class VarintExtensions {
-        public static void WriteLEB (this BinaryWriter writer, uint value) {
+        public static void WriteLEB (this BinaryWriter writer, ulong value) {
             do {
                 var b = value & 0x7F;
                 value >>= 7;
@@ -18,7 +18,7 @@ namespace ModuleSaw {
             } while (value != 0);
         }
 
-        public static void WriteLEB (this BinaryWriter writer, int value) {
+        public static void WriteLEB (this BinaryWriter writer, long value) {
             do {
                 var b = value & 0x7F;
                 value >>= 7;
@@ -38,12 +38,20 @@ namespace ModuleSaw {
             } while (true);
         }
 
-        public static uint ReadLEBUInt (this BinaryReader reader) {
-            uint result = 0;
+        public static void WriteLEB (this BinaryWriter writer, int value) {
+            WriteLEB(writer, (long)value);
+        }
+
+        public static void WriteLEB (this BinaryWriter writer, uint value) {
+            WriteLEB(writer, (ulong)value);
+        }
+
+        public static ulong ReadLEBUInt (this BinaryReader reader) {
+            ulong result = 0;
             int shift = 0;
             while (true) {
                 var b = reader.ReadByte();
-                var shifted = (uint)(b & 0x7F) << shift;
+                var shifted = (ulong)(b & 0x7F) << shift;
                 result |= shifted;
 
                 if ((b & 0x80) == 0)
@@ -55,13 +63,14 @@ namespace ModuleSaw {
             return result;
         }
 
-        public static int ReadLEBInt (this BinaryReader reader) {
-            int result = 0, shift = 0;
+        public static long ReadLEBInt (this BinaryReader reader) {
+            long result = 0;
+            int shift = 0;
             byte b;
 
             while (true) {
                 b = reader.ReadByte();
-                var shifted = (b & 0x7F) << shift;
+                var shifted = (long)(b & 0x7F) << shift;
                 result |= shifted;
                 shift += 7;
 
@@ -70,7 +79,7 @@ namespace ModuleSaw {
             }
 
             if ((b & 0x40) != 0)
-                result |= (-1 << shift);
+                result |= (((long)-1) << shift);
 
             return result;
         }
