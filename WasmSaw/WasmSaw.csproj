@@ -37,6 +37,7 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Expression.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="WasmModel.cs" />
   </ItemGroup>

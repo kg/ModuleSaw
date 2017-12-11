@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WasmSaw.Model {
+namespace Wasm.Model {
     public enum SectionTypes : sbyte {
         Type = 1,
         Import,
@@ -43,21 +43,100 @@ namespace WasmSaw.Model {
     }
 
     public struct TypeSection {
-        public uint count;
         public func_type[] entries;
     }
 
     public struct ImportSection {
-        public uint count;
         public import_entry[] entries;
+    }
+
+    public struct FunctionSection {
+        public uint[] types;
+    }
+
+    public struct TableSection {
+        public table_type[] entries;
+    }
+
+    public struct MemorySection {
+        public memory_type[] entries;
+    }
+
+    public struct GlobalSection {
+        public global_variable[] globals;
+    }
+
+    public struct ExportSection {
+        public export_entry[] entries;
+    }
+
+    public struct StartSection {
+        public uint index;
+    }
+
+    public struct ElementSection {
+        public elem_segment[] entries;
+    }
+
+    public struct CodeSection {
+        public function_body[] bodies;
+    }
+
+    public struct DataSection {
+        public data_segment[] entries;
+    }
+
+    public struct function_body {
+        public uint body_size;
+        public uint local_count;
+        public local_entry[] locals;
+        public byte[] code;
+        public byte end;
+    }
+
+    public struct local_entry {
+        public LanguageTypes[] type;
+    }
+
+    public struct init_expr {
+        public Expression expr;
+        public Expression end;
+    }
+
+    public struct memory_immediate {
+        public uint flags;
+        public uint offset;
+    }
+
+    public struct data_segment {
+        public uint index;
+        public init_expr offset;
+        public byte[] data;
+    }
+
+    public struct elem_segment {
+        public uint index;
+        public init_expr offset;
+        public uint[] elems;
+    }
+
+    public struct export_entry {
+        public string field;
+        public external_kind kind;
+        public uint index;
+    }
+
+    public struct global_variable {
+        public global_type type;
+        public init_expr init;
     }
 
     public struct import_entry {
         public string module;
         public string field;
         public external_kind kind;
-        // HACK
-        public uint type;
+        // FIXME
+        public object type;
     }
 
     public struct func_type {
