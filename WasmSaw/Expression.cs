@@ -189,8 +189,23 @@ namespace Wasm.Model {
         f64_reinterpret_i64,
     }
 
-    public class Expression {
+    public struct Expression {
         public Opcodes Opcode;
-        public object[] Operands;
+        public Operand[] Operands;
+    }
+
+    public struct Operand {
+        public Expression Expression;
+        public object Else;
+    }
+
+    public struct br_table_immediate {
+        public uint[] target_table;
+        public uint default_target;
+    }
+
+    public struct memory_immediate {
+        public uint flags;
+        public uint offset;
     }
 }

@@ -103,11 +103,6 @@ namespace Wasm.Model {
         public Expression end;
     }
 
-    public struct memory_immediate {
-        public uint flags;
-        public uint offset;
-    }
-
     public struct data_segment {
         public uint index;
         public init_expr offset;
