@@ -38,6 +38,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Expression.cs" />
+    <Compile Include="ExpressionReader.cs" />
+    <Compile Include="ModuleReader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="WasmModel.cs" />
   </ItemGroup>

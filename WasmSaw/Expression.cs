@@ -1,11 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Wasm.Model {
-    public enum Opcodes {
+    public enum OpcodePrefixes : byte {
+        none = 0x00,
+        sat = 0xfc,
+        atomic = 0xfe
+    }
+
+    public enum Opcodes : byte {
         unreachable = 0x00,
         nop,
         block,
@@ -187,16 +194,59 @@ namespace Wasm.Model {
         i64_reinterpret_f64, 		
         f32_reinterpret_i32, 		
         f64_reinterpret_i64,
+
+        // not in the spec 😒
+        i32_extend_8_s = 0xc0,
+        i32_extend_16_s,
+        i64_extend_8_s,
+        i64_extend_16_s,
+        i64_extend_32_s,
+    }
+
+    public class Block : List<Expression> {
+        public LanguageTypes BlockType;
     }
 
     public struct Expression {
         public Opcodes Opcode;
-        public Operand[] Operands;
+        public ExpressionBody Body;
+
+        public bool IsValid {
+            get {
+                return Body.IsValid;
+            }
+            internal set {
+                Body.IsValid = value;
+            }
+        }
     }
 
-    public struct Operand {
-        public Expression Expression;
-        public object Else;
+    public struct ExpressionBody {
+        [StructLayout(LayoutKind.Explicit)]
+        public struct Union {
+            [FieldOffset(0)]
+            public ulong u64;
+            [FieldOffset(0)]
+            public uint u32;
+            [FieldOffset(0)]
+            public long i64;
+            [FieldOffset(0)]
+            public int i32;
+            [FieldOffset(0)]
+            public double f64;
+            [FieldOffset(0)]
+            public float f32;
+            [FieldOffset(0)]
+            public memory_immediate memory;
+            [FieldOffset(0)]
+            public loadstore_immediate loadstore;
+        }
+
+        public bool IsValid;
+        public Union U;
+        public br_table_immediate br_table;
+        public Expression[] Expressions;
+        public Block Block;
     }
 
     public struct br_table_immediate {
@@ -207,5 +257,15 @@ namespace Wasm.Model {
     public struct memory_immediate {
         public uint flags;
         public uint offset;
+    }
+    
+    public struct loadstore_immediate {
+        public uint alignment_log2;
+        public uint offset;
+    }
+
+    public struct call_indirect_immediate {
+        public uint sig_index;
+        public uint reserved;
     }
 }

@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using ModuleSaw;
+using Wasm.Model;
 
 namespace WasmSaw {
     class Program {
@@ -46,7 +48,30 @@ namespace WasmSaw {
             return result;
         }
 
+        private static void Assert (
+            bool b,
+            string description = null,
+            [CallerMemberName] string memberName = "",  
+            [CallerFilePath]   string sourceFilePath = "",  
+            [CallerLineNumber] int sourceLineNumber = 0
+        ) {
+            if (!b)
+                throw new Exception(string.Format(
+                    "{0} failed in {1} @ {2}:{3}",
+                    description ?? "Assert",
+                    memberName, Path.GetFileName(sourceFilePath), sourceLineNumber
+                ));
+        }
+
         private static void StreamingConvert (BinaryReader wasm, AbstractModuleBuilder amb) {
+            var mr = new ModuleReader(wasm);
+
+            Assert(mr.ReadHeader(), "ReadHeader");
+
+            SectionHeader sh;
+            while (mr.ReadSectionHeader(out sh)) {
+                wasm.BaseStream.Seek(sh.payload_len, SeekOrigin.Current);
+            }
         }
     }
 }

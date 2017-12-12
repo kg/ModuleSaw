@@ -46,10 +46,16 @@ namespace ModuleSaw {
             WriteLEB(writer, (ulong)value);
         }
 
-        public static ulong ReadLEBUInt (this BinaryReader reader) {
+        public static ulong? ReadLEBUInt (this BinaryReader reader) {
+            var br = reader.BaseStream;
+            var l = br.Length;
+
             ulong result = 0;
             int shift = 0;
             while (true) {
+                if (br.Position == l)
+                    return null;
+
                 var b = reader.ReadByte();
                 var shifted = (ulong)(b & 0x7F) << shift;
                 result |= shifted;
@@ -63,12 +69,18 @@ namespace ModuleSaw {
             return result;
         }
 
-        public static long ReadLEBInt (this BinaryReader reader) {
+        public static long? ReadLEBInt (this BinaryReader reader) {
+            var br = reader.BaseStream;
+            var l = br.Length;
+
             long result = 0;
             int shift = 0;
             byte b;
 
             while (true) {
+                if (br.Position == l)
+                    return null;
+
                 b = reader.ReadByte();
                 var shifted = (long)(b & 0x7F) << shift;
                 result |= shifted;
@@ -82,6 +94,12 @@ namespace ModuleSaw {
                 result |= (((long)-1) << shift);
 
             return result;
+        }
+
+        public static string ReadPString (this BinaryReader reader) {
+            var length = reader.ReadLEBUInt();
+            var body = reader.ReadBytes((int)length.Value);
+            return Encoding.UTF8.GetString(body);
         }
     }
 }

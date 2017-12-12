@@ -98,20 +98,15 @@ namespace Wasm.Model {
         public LanguageTypes[] type;
     }
 
-    public struct init_expr {
-        public Expression expr;
-        public Expression end;
-    }
-
     public struct data_segment {
         public uint index;
-        public init_expr offset;
+        public Expression offset;
         public byte[] data;
     }
 
     public struct elem_segment {
         public uint index;
-        public init_expr offset;
+        public Expression offset;
         public uint[] elems;
     }
 
@@ -123,7 +118,7 @@ namespace Wasm.Model {
 
     public struct global_variable {
         public global_type type;
-        public init_expr init;
+        public Expression init;
     }
 
     public struct import_entry {
