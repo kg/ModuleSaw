@@ -22,9 +22,17 @@ namespace WasmSaw {
                 Configuration = config
             };
 
-            using (var input = new BinaryReader(File.OpenRead(args[0]), Encoding.UTF8, false)) {
-                StreamingConvert(input, amb);
+            // HACK: Much faster to read everything in at once, because
+            //  we need to seek a lot to decode functions
+            MemoryStream inputMs;
+            using (var inputFile = File.OpenRead(args[0])) {
+                inputMs = new MemoryStream((int)inputFile.Length);
+                inputFile.CopyTo(inputMs);
+                inputMs.Position = 0;
             }
+
+            using (var input = new BinaryReader(inputMs, Encoding.UTF8, false))
+                StreamingConvert(input, amb);
 
             using (var output = File.OpenWrite(args[1])) {
                 output.SetLength(0);

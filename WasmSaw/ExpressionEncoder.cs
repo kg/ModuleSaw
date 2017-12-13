@@ -12,7 +12,7 @@ namespace WasmSaw {
 
         private KeyedStream OpcodeStream, GlobalIndices, LocalIndices,
             MemoryImmediates, BrTables, BlockTypes,
-            BlockSizes;
+            FunctionIndices, TypeIndices, BlockSizes;
 
         public ExpressionEncoder (AbstractModuleBuilder builder) {
             Builder = builder;
@@ -20,6 +20,8 @@ namespace WasmSaw {
             OpcodeStream = builder.GetStream("opcode");
             GlobalIndices = builder.GetStream("global_index");
             LocalIndices = builder.GetStream("local_index");
+            FunctionIndices = builder.GetStream("function_index");
+            TypeIndices = builder.GetStream("type_index");
             MemoryImmediates = builder.GetStream("memory_immediate");
             BrTables = builder.GetStream("br_table");
             BlockTypes = builder.GetStream("block_type");
@@ -35,6 +37,10 @@ namespace WasmSaw {
                 case Opcodes.set_local:
                 case Opcodes.tee_local:
                     return LocalIndices;
+                case Opcodes.call:
+                    return FunctionIndices;
+                case Opcodes.call_indirect:
+                    return TypeIndices;
             }
 
             return null;

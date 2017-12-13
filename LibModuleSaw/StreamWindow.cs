@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -36,6 +37,7 @@ namespace ModuleSaw {
             BaseStream.Flush();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int Read (byte[] buffer, int offset, int count) {
             if (BaseStream.Position != Position)
                 BaseStream.Position = Position + Offset;
@@ -47,6 +49,7 @@ namespace ModuleSaw {
             return readCount;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override long Seek (long offset, SeekOrigin origin) {
             // FIXME: EOF
             switch (origin) {

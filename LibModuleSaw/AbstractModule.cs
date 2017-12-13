@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -53,6 +54,7 @@ namespace ModuleSaw {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (long value, KeyedStream stream = null) {
             if (Configuration.Varints)
                 (stream ?? LongStream).WriteLEB(value);
@@ -60,6 +62,7 @@ namespace ModuleSaw {
                 (stream ?? LongStream).Write(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (ulong value, KeyedStream stream = null) {
             if (Configuration.Varints)
                 (stream ?? ULongStream).WriteLEB(value);
@@ -67,6 +70,7 @@ namespace ModuleSaw {
                 (stream ?? ULongStream).Write(value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (int value, KeyedStream stream = null) {
             if (Configuration.Varints)
                 (stream ?? IntStream).WriteLEB(value);
@@ -74,9 +78,9 @@ namespace ModuleSaw {
                 (stream ?? IntStream).Write(value);
         }
 
-        public void Write (uint value, KeyedStream stream = null, bool disableUints = false) {
-            // FIXME: Separate stream for never-LEB uints?
-            if (Configuration.Varints && !disableUints)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Write (uint value, KeyedStream stream = null) {
+            if (Configuration.Varints)
                 (stream ?? UIntStream).WriteLEB(value);
             else
                 (stream ?? UIntStream).Write(value);
@@ -86,10 +90,12 @@ namespace ModuleSaw {
             BooleanStream.Write(value ? 1 : 0);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (sbyte b) {
             SByteStream.Write(b);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (byte b) {
             ByteStream.Write(b);
         }
@@ -109,6 +115,7 @@ namespace ModuleSaw {
                 (stream ?? StringStream).Write(text.ToCharArray());
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteArrayLength (Array array) {
             if (array == null)
                 Write((uint)0, ArrayLengthStream);
