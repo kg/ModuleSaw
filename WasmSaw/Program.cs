@@ -70,7 +70,17 @@ namespace WasmSaw {
 
             SectionHeader sh;
             while (mr.ReadSectionHeader(out sh)) {
-                wasm.BaseStream.Seek(sh.payload_len, SeekOrigin.Current);
+                switch (sh.id) {
+                    case SectionTypes.Code:
+                        CodeSection cs;
+                        Assert(mr.ReadCodeSection(out cs));
+                        break;
+
+                    default:
+                        Console.WriteLine("{0} {1}b", sh.name ?? sh.id.ToString(), sh.payload_len);
+                        wasm.BaseStream.Seek(sh.payload_len, SeekOrigin.Current);
+                        break;
+                }
             }
         }
     }

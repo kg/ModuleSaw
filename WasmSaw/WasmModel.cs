@@ -90,12 +90,14 @@ namespace Wasm.Model {
         public uint body_size;
         public uint local_count;
         public local_entry[] locals;
-        public byte[] code;
-        public byte end;
+
+        // Position inside stream
+        public long codeOffset;
     }
 
     public struct local_entry {
-        public LanguageTypes[] type;
+        public uint count;
+        public LanguageTypes type;
     }
 
     public struct data_segment {

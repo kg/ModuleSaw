@@ -43,5 +43,40 @@ namespace Wasm.Model {
             // FIXME
             return true;
         }
+
+        private TItem[] ReadList<TItem> (Func<uint, TItem> readItem) {
+            var count = Reader.ReadLEBUInt();
+            if (!count.HasValue)
+                return null;
+
+            var result = new TItem[count.Value];
+            for (uint i = 0; i < result.Length; i++)
+                result[i] = readItem(i);
+
+            return result;
+        }
+
+        public bool ReadCodeSection (out CodeSection cs) {
+            cs.bodies = ReadList((i) => {
+                var bodySize = (long)Reader.ReadLEBUInt();
+                var bodyOffset = Reader.BaseStream.Position;
+                var localEntries = ReadList(
+                    (j) => new local_entry {
+                        count = (uint)Reader.ReadLEBUInt(),
+                        type = (LanguageTypes)Reader.ReadLEBInt()
+                    }
+                );
+                var codeOffset = Reader.BaseStream.Position;
+                Reader.BaseStream.Seek((long)(bodyOffset + bodySize), SeekOrigin.Begin);
+
+                return new function_body {
+                    body_size = (uint)bodySize,
+                    locals = localEntries,
+                    codeOffset = codeOffset
+                };
+            });
+
+            return cs.bodies != null;
+        }
     }
 }
