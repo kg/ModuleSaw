@@ -138,12 +138,9 @@ namespace WasmSaw {
             var functionStream = amb.GetStream("function_bodies");
             functionStream.Flush();
 
-            foreach (var cs in codeSections) {
-                foreach (var body in cs.bodies) {
-                    using (var subStream = new StreamWindow(wasm.BaseStream, body.code_offset, body.code_size))
-                        subStream.CopyTo(functionStream.BaseStream);
-                }
-            }
+            foreach (var cs in codeSections)
+                foreach (var body in cs.bodies)
+                    EncodeFunctionBody(encoder, functionStream, wasm.BaseStream, body);
 
             var dataStream = amb.GetStream("data_segments");
             dataStream.Flush();
@@ -152,6 +149,31 @@ namespace WasmSaw {
                 foreach (var ent in ds.entries) {
                     using (var subStream = new StreamWindow(wasm.BaseStream, ent.data_offset, ent.size))
                         subStream.CopyTo(dataStream.BaseStream);
+                }
+            }
+        }
+
+        private static void EncodeFunctionBody (ModuleEncoder encoder, KeyedStream functionStream, Stream baseStream, function_body body) {
+            using (var subStream = new StreamWindow(baseStream, body.body_offset, body.body_size)) {
+                if (false) {
+                    subStream.CopyTo(functionStream.BaseStream);
+                } else {
+                    var reader = new ExpressionReader(new BinaryReader(subStream));
+                    var ee = encoder.ExpressionEncoder;
+                    Expression e;
+
+                    Console.WriteLine("--");
+                    while (reader.TryReadExpression(out e)) {
+                        if (!reader.TryReadExpressionBody(ref e))
+                            throw new Exception("Failed to read body of " + e.Opcode);
+
+                        if (e.Opcode == Opcodes.end)
+                            return;
+
+                        ee.Write(ref e);
+                    }
+
+                    throw new Exception("Found no end opcode in function body");
                 }
             }
         }

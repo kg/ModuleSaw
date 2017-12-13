@@ -94,8 +94,7 @@ namespace Wasm.Model {
         public local_entry[] locals;
 
         // Position inside stream
-        public long code_offset;
-        public long code_size;
+        public long body_offset;
     }
 
     public struct local_entry {

@@ -169,7 +169,7 @@ namespace WasmSaw {
                 }
 
                 // FIXME
-                Builder.Write(value.code_size);
+                Builder.Write(value.body_size);
             }
         }
 

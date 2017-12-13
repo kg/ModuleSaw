@@ -188,6 +188,8 @@ namespace Wasm.Model {
 
         public bool ReadCodeSection (out CodeSection cs) {
             cs.bodies = ReadList((i) => {
+                var initialOffset = Reader.BaseStream.Position;
+
                 var bodySize = (long)Reader.ReadLEBUInt();
                 var bodyOffset = Reader.BaseStream.Position;
                 var localEntries = ReadList(
@@ -196,14 +198,14 @@ namespace Wasm.Model {
                         type = ReadLanguageType()
                     }
                 );
+
                 var codeOffset = Reader.BaseStream.Position;
                 Reader.BaseStream.Seek(bodyOffset + bodySize, SeekOrigin.Begin);
 
                 return new function_body {
                     body_size = (uint)bodySize,
                     locals = localEntries,
-                    code_offset = codeOffset,
-                    code_size = (bodyOffset + bodySize) - codeOffset
+                    body_offset = codeOffset
                 };
             });
 

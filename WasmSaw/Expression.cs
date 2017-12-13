@@ -236,16 +236,12 @@ namespace Wasm.Model {
             [FieldOffset(0)]
             public loadstore_immediate loadstore;
             [FieldOffset(0)]
-            public block_immediate block;
+            public LanguageTypes type;
         }
 
         public Union U;
         public br_table_immediate br_table;
         public Expression[] children;
-    }
-
-    public struct block_immediate {
-        public LanguageTypes block_type;
     }
 
     public struct br_table_immediate {
