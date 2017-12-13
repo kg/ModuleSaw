@@ -12,6 +12,10 @@ namespace ModuleSaw {
             BoundaryMarker2 = 0xABCD9876,
             BoundaryMarker3 = 0x13579FCA;
 
+        public static readonly byte[] Prologue = (new[] {
+            '\x89', 'M', 'S', 'a', 'w', '\r', '\n', '\x1a', '\n', '\0'
+        }).Select(c => (byte)c).ToArray();
+
         public KeyedStream
             IntStream, UIntStream,
             LongStream, ULongStream,
@@ -129,10 +133,7 @@ namespace ModuleSaw {
 
         public void SaveTo (Stream output, string subFormat) {
             using (var writer = new BinaryWriter(output, Encoding.UTF8, true)) {
-                var prologue = new[] {
-                    '\x89', 'M', 'S', 'a', 'w', '\r', '\n', '\x1a', '\n', '\0'
-                };
-                writer.Write(prologue.Select(c => (byte)c).ToArray());
+                writer.Write(Prologue);
 
                 writer.Write(subFormat);
 

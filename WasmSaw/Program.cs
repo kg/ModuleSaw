@@ -13,11 +13,46 @@ namespace WasmSaw {
     class Program {
         static void Main (string[] args) {
             if (args.Length != 2)
-                throw new Exception("Expected: input.wasm output.msaw");
+                throw new Exception("Expected: WasmSaw input.wasm output.msaw\r\nor:       WasmSaw input.msaw output.wasm");
 
             Console.Write("{0} ... ", args[0]);
 
             var config = CreateConfiguration();
+
+            using (var inputFile = File.OpenRead(args[0]))
+            using (var outputFile = File.OpenWrite(args[1])) {
+                if (IsThisWasm(inputFile))
+                    WasmToMsaw(inputFile, outputFile, config);
+                else if (IsThisMsaw(inputFile))
+                    MsawToWasm(inputFile, outputFile, config);
+                else
+                    throw new Exception("Unrecognized input format");
+            }
+
+            Console.WriteLine(args[1]);
+
+            if (Debugger.IsAttached)
+                Console.ReadLine();
+        }
+        
+        public static bool IsThisWasm (Stream input) {
+            using (var reader = new BinaryReader(input, Encoding.UTF8, true)) {
+                var mr = new ModuleReader(reader);
+                return mr.ReadHeader();
+            }
+        }
+
+        public static bool IsThisMsaw (Stream input) {
+            var buffer = new byte[AbstractModuleBuilder.Prologue.Length];
+            input.Read(buffer, 0, buffer.Length);
+            return buffer.SequenceEqual(AbstractModuleBuilder.Prologue);
+        }
+
+        public static void MsawToWasm (Stream input, Stream output, Configuration config) {
+            throw new NotImplementedException();
+        }
+
+        public static void WasmToMsaw (Stream input, Stream output, Configuration config) {
             var amb = new AbstractModuleBuilder {
                 Configuration = config
             };
@@ -25,24 +60,17 @@ namespace WasmSaw {
             // HACK: Much faster to read everything in at once, because
             //  we need to seek a lot to decode functions
             MemoryStream inputMs;
-            using (var inputFile = File.OpenRead(args[0])) {
-                inputMs = new MemoryStream((int)inputFile.Length);
-                inputFile.CopyTo(inputMs);
-                inputMs.Position = 0;
-            }
+            inputMs = new MemoryStream((int)input.Length);
+            input.Position = 0;
+            input.CopyTo(inputMs);
+            inputMs.Position = 0;
 
-            using (var input = new BinaryReader(inputMs, Encoding.UTF8, false))
-                StreamingConvert(input, amb);
+            using (var reader = new BinaryReader(inputMs, Encoding.UTF8, false)) {
+                StreamingConvert(reader, amb);
 
-            using (var output = File.OpenWrite(args[1])) {
                 output.SetLength(0);
                 amb.SaveTo(output, "webassembly-v1");
             }
-
-            Console.WriteLine(args[1]);
-
-            if (Debugger.IsAttached)
-                Console.ReadLine();
         }
 
         private static Configuration CreateConfiguration () {

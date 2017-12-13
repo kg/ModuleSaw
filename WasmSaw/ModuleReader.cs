@@ -193,7 +193,7 @@ namespace Wasm.Model {
             return els.entries != null;
         }
 
-        public bool ReadCodeSection (out CodeSection cs) {
+        public bool ReadCodeSection (out CodeSection cs, Action<function_body, BinaryReader> itemCallback = null) {
             cs.bodies = ReadList((i) => {
                 var initialOffset = Reader.BaseStream.Position;
 
@@ -208,14 +208,20 @@ namespace Wasm.Model {
 
                 var codeOffset = Reader.BaseStream.Position;
                 var codeEnd = bodyOffset + bodySize;
-                Reader.BaseStream.Seek(codeEnd, SeekOrigin.Begin);
 
-                return new function_body {
+                var result = new function_body {
                     body_size = (uint)bodySize,
                     locals = localEntries,
                     body_offset = codeOffset,
                     body_end = codeEnd
                 };
+
+                if (itemCallback != null)
+                    itemCallback(result, Reader);
+
+                Reader.BaseStream.Seek(codeEnd, SeekOrigin.Begin);
+
+                return result;
             });
 
             return cs.bodies != null;

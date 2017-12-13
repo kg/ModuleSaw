@@ -64,8 +64,8 @@ namespace WasmSaw {
             KeyedStream payload_lens, ids;
 
             public SectionHeaderEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
-                ids = GetStream("section.id");
-                payload_lens = GetStream("section.payload_len");
+                ids = GetStream("section_id");
+                payload_lens = GetStream("section_payload_len");
             }
 
             public override void Encode (ref SectionHeader value) {
