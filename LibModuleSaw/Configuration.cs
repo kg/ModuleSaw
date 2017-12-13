@@ -8,6 +8,6 @@ using System.Threading.Tasks;
 namespace ModuleSaw {
     public class Configuration {
         public bool Varints;
-        public bool ExcludePrimitivesFromPartitioning;
+        // public bool ExcludePrimitivesFromPartitioning;
     }
 }

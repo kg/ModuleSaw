@@ -11,9 +11,8 @@ namespace ModuleSaw {
             IntStream, UIntStream,
             LongStream, ULongStream,
             SByteStream, ByteStream,
-            BooleanStream, TypeIdStream,
-            StringLengthStream, StringStream,
-            ArrayLengthStream;
+            BooleanStream, ArrayLengthStream,
+            StringLengthStream, StringStream;
 
         public Configuration Configuration;
 
@@ -31,7 +30,6 @@ namespace ModuleSaw {
             SByteStream = GetStream("i8");
             ByteStream = GetStream("u8");
             BooleanStream = GetStream("u1");
-            TypeIdStream = GetStream("typeId");
             StringLengthStream = GetStream("stringLength");
             StringStream = GetStream("string");
             ArrayLengthStream = GetStream("arrayLength");
@@ -52,28 +50,28 @@ namespace ModuleSaw {
             return result;
         }
 
-        public void WriteValue (long value, KeyedStream stream = null) {
+        public void Write (long value, KeyedStream stream = null) {
             if (Configuration.Varints)
                 (stream ?? LongStream).WriteLEB(value);
             else
                 (stream ?? LongStream).Write(value);
         }
 
-        public void WriteValue (ulong value, KeyedStream stream = null) {
+        public void Write (ulong value, KeyedStream stream = null) {
             if (Configuration.Varints)
                 (stream ?? ULongStream).WriteLEB(value);
             else
                 (stream ?? ULongStream).Write(value);
         }
 
-        public void WriteValue (int value, KeyedStream stream = null) {
+        public void Write (int value, KeyedStream stream = null) {
             if (Configuration.Varints)
                 (stream ?? IntStream).WriteLEB(value);
             else
                 (stream ?? IntStream).Write(value);
         }
 
-        public void WriteValue (uint value, KeyedStream stream = null, bool disableUints = false) {
+        public void Write (uint value, KeyedStream stream = null, bool disableUints = false) {
             // FIXME: Separate stream for never-LEB uints?
             if (Configuration.Varints && !disableUints)
                 (stream ?? UIntStream).WriteLEB(value);
@@ -81,19 +79,19 @@ namespace ModuleSaw {
                 (stream ?? UIntStream).Write(value);
         }
 
-        public void WriteValue (bool value) {
+        public void Write (bool value) {
             BooleanStream.Write(value ? 1 : 0);
         }
 
-        public void WriteValue (sbyte b) {
+        public void Write (sbyte b) {
             SByteStream.Write(b);
         }
 
-        public void WriteValue (byte b) {
+        public void Write (byte b) {
             ByteStream.Write(b);
         }
 
-        public void WriteString (string text) {
+        public void Write (string text, KeyedStream stream = null) {
             var length = 0;
             if (text != null)
                 length = text.Length + 1;
@@ -105,7 +103,7 @@ namespace ModuleSaw {
                 StringLengthStream.Write(length);
 
             if ((text != null) && text.Length > 0)
-                StringStream.Write(text.ToCharArray());
+                (stream ?? StringStream).Write(text.ToCharArray());
         }
 
         public void WriteArrayLength (Array array) {
@@ -120,20 +118,20 @@ namespace ModuleSaw {
         }
 
         public void SaveTo (Stream output) {
-            var zero = new byte[1];
             // TODO: Header
 
+            output.Write(BitConverter.GetBytes(OrderedStreams.Count), 0, 4);
+
+            // HACK for readability in hex editor
             foreach (var s in OrderedStreams) {
-                var bytes = Encoding.UTF8.GetBytes(s.Key);
-                output.Write(bytes, 0, bytes.Length);
-                output.Write(zero, 0, 1);
+                s.WriteHeader(output);
+            }
 
-                var length = (int)s.Stream.Length;
+            foreach (var s in OrderedStreams) {
+                s.WriteHeader(output);
 
-                output.Write(BitConverter.GetBytes(length), 0, sizeof(int));
-
-                bytes = s.Stream.GetBuffer();
-                output.Write(bytes, 0, length);
+                var bytes = s.Stream.GetBuffer();
+                output.Write(bytes, 0, (int)s.Stream.Length);
             }
         }
     }

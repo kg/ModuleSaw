@@ -11,12 +11,13 @@ namespace WasmSaw {
         public readonly AbstractModuleBuilder Builder;
         public readonly ExpressionEncoder ExpressionEncoder;
 
+        public readonly TypeEncoders Types;
+
         public ModuleEncoder (AbstractModuleBuilder builder) {
             Builder = builder;
             ExpressionEncoder = new ExpressionEncoder(builder);
-        }
 
-        public void Write (ref SectionHeader sh) {
+            Types = new TypeEncoders(this);
         }
     }
 }

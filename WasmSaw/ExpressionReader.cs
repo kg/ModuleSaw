@@ -8,7 +8,7 @@ using ModuleSaw;
 
 namespace Wasm.Model {
     public class ExpressionReader {
-        public readonly BinaryReader Reader;
+        public BinaryReader Reader;
 
         public ExpressionReader (BinaryReader reader) {
             Reader = reader;

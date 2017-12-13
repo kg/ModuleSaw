@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 namespace ModuleSaw {
     public class StreamWindow : Stream {
         public readonly Stream BaseStream;
+        public readonly long OriginalPosition;
 
         private readonly long Offset, _Length;
 
@@ -16,6 +17,7 @@ namespace ModuleSaw {
             if (!baseStream.CanRead || !baseStream.CanSeek)
                 throw new Exception();
 
+            OriginalPosition = baseStream.Position;
             Offset = offset;
             _Length = length;
         }
@@ -36,9 +38,11 @@ namespace ModuleSaw {
 
         public override int Read (byte[] buffer, int offset, int count) {
             if (BaseStream.Position != Position)
-                BaseStream.Position = Position;
+                BaseStream.Position = Position + Offset;
 
-            var readCount = BaseStream.Read(buffer, offset, count);
+            var actualCount = (int)Math.Min(count, (_Length - Position));
+
+            var readCount = BaseStream.Read(buffer, offset, actualCount);
             Position += readCount;
             return readCount;
         }
@@ -63,6 +67,16 @@ namespace ModuleSaw {
 
         public override void Write (byte[] buffer, int offset, int count) {
             throw new InvalidOperationException();
+        }
+
+        public override void Close () {
+            BaseStream.Position = Offset + _Length;
+            base.Close();
+        }
+
+        protected override void Dispose (bool disposing) {
+            BaseStream.Position = Offset + _Length;
+            base.Dispose(disposing);
         }
     }
 }

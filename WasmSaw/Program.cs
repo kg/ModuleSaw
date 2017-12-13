@@ -39,8 +39,7 @@ namespace WasmSaw {
 
         private static Configuration CreateConfiguration () {
             var result = new Configuration {
-                Varints = false,
-                ExcludePrimitivesFromPartitioning = false
+                Varints = true
             };
 
             return result;
@@ -68,60 +67,65 @@ namespace WasmSaw {
             Assert(reader.ReadHeader(), "ReadHeader");
 
             // Record these and then write them at the end of the encoded module
+            var codeSections = new List<CodeSection>();
             var dataSections = new List<DataSection>();
+            var t = encoder.Types;
 
             SectionHeader sh;
             while (reader.ReadSectionHeader(out sh)) {
-                encoder.Write(ref sh);
+                t.SectionHeader.Encode(ref sh);
 
                 switch (sh.id) {
                     case SectionTypes.Type:
                         TypeSection ts;
                         Assert(reader.ReadTypeSection(out ts));
-                        encoder.WriteArray(ts.entries);
+                        t.func_type.Encode(ts.entries);
                         break;
 
                     case SectionTypes.Import:
                         ImportSection ims;
                         Assert(reader.ReadImportSection(out ims));
-                        encoder.WriteArray(ims.entries);
+                        t.import_entry.Encode(ims.entries);
                         break;
 
                     case SectionTypes.Function:
                         FunctionSection fs;
                         Assert(reader.ReadFunctionSection(out fs));
-                        encoder.WriteArray(fs.types);
+                        amb.WriteArrayLength(fs.types);
+                        foreach (var typeIndex in fs.types)
+                            amb.Write(typeIndex);
                         break;
 
                     case SectionTypes.Global:
                         GlobalSection gs;
                         Assert(reader.ReadGlobalSection(out gs));
-                        encoder.WriteArray(gs.globals);
+                        t.global_variable.Encode(gs.globals);
                         break;
 
                     case SectionTypes.Export:
                         ExportSection exs;
                         Assert(reader.ReadExportSection(out exs));
-                        encoder.WriteArray(exs.entries);
+                        t.export_entry.Encode(exs.entries);
                         break;
 
                     case SectionTypes.Element:
                         ElementSection els;
                         Assert(reader.ReadElementSection(out els));
-                        encoder.WriteArray(els.entries);
+                        t.elem_segment.Encode(els.entries);
                         break;
 
                     case SectionTypes.Code:
                         CodeSection cs;
                         Assert(reader.ReadCodeSection(out cs));
-                        encoder.WriteArray(cs.bodies);
+                        codeSections.Add(cs);
+                        t.function_body.Encode(cs.bodies);
                         break;
 
                     case SectionTypes.Data:
                         DataSection ds;
                         Assert(reader.ReadDataSection(out ds));
                         dataSections.Add(ds);
-                        encoder.WriteArray(ds.entries);
+                        t.data_segment.Encode(ds.entries);
                         break;
 
                     default:
@@ -131,13 +135,23 @@ namespace WasmSaw {
                 }
             }
 
-            var dataStream = amb.GetStream("data_sections");
+            var functionStream = amb.GetStream("function_bodies");
+            functionStream.Flush();
+
+            foreach (var cs in codeSections) {
+                foreach (var body in cs.bodies) {
+                    using (var subStream = new StreamWindow(wasm.BaseStream, body.code_offset, body.code_size))
+                        subStream.CopyTo(functionStream.BaseStream);
+                }
+            }
+
+            var dataStream = amb.GetStream("data_segments");
             dataStream.Flush();
 
             foreach (var ds in dataSections) {
                 foreach (var ent in ds.entries) {
-                    var subStream = new StreamWindow(wasm.BaseStream, ent.data_offset, ent.size);
-                    subStream.CopyTo(dataStream.BaseStream);
+                    using (var subStream = new StreamWindow(wasm.BaseStream, ent.data_offset, ent.size))
+                        subStream.CopyTo(dataStream.BaseStream);
                 }
             }
         }

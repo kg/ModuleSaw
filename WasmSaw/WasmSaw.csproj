@@ -43,6 +43,7 @@
     <Compile Include="ModuleEncoder.cs" />
     <Compile Include="ModuleReader.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="TypeEncoders.cs" />
     <Compile Include="WasmModel.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -28,7 +28,8 @@ namespace Wasm.Model {
     }
 
     public enum LanguageTypes : sbyte {
-        invalid = 0,
+        none = 0,
+
         i32 = -0x01,
         i64 = -0x02,
         f32 = -0x03,
@@ -90,7 +91,6 @@ namespace Wasm.Model {
 
     public struct function_body {
         public uint body_size;
-        public uint local_count;
         public local_entry[] locals;
 
         // Position inside stream
@@ -151,7 +151,7 @@ namespace Wasm.Model {
     public struct func_type {
         public sbyte form;
         public LanguageTypes[] param_types;
-        public LanguageTypes? return_type;
+        public LanguageTypes return_type;
     }
 
     public struct global_type {
