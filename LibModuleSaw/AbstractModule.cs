@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public class AbstractModuleBuilder {
+        public const uint BoundaryMarker1 = 0xDBCA1234,
+            BoundaryMarker2 = 0xABCD9876,
+            BoundaryMarker3 = 0x13579FCA;
+
         public KeyedStream
             IntStream, UIntStream,
             LongStream, ULongStream,
@@ -123,21 +127,35 @@ namespace ModuleSaw {
                 Write((uint)array.Length + 1, ArrayLengthStream);
         }
 
-        public void SaveTo (Stream output) {
-            // TODO: Header
+        public void SaveTo (Stream output, string subFormat) {
+            using (var writer = new BinaryWriter(output, Encoding.UTF8, true)) {
+                var prologue = new[] {
+                    '\x89', 'M', 'S', 'a', 'w', '\r', '\n', '\x1a', '\n', '\0'
+                };
+                writer.Write(prologue.Select(c => (byte)c).ToArray());
 
-            output.Write(BitConverter.GetBytes(OrderedStreams.Count), 0, 4);
+                writer.Write(subFormat);
 
-            // HACK for readability in hex editor
-            foreach (var s in OrderedStreams) {
-                s.WriteHeader(output);
-            }
+                writer.Write(BoundaryMarker1);
 
-            foreach (var s in OrderedStreams) {
-                s.WriteHeader(output);
+                writer.Write(OrderedStreams.Count);
+                foreach (var s in OrderedStreams)
+                    s.WriteHeader(writer);
 
-                var bytes = s.Stream.GetBuffer();
-                output.Write(bytes, 0, (int)s.Stream.Length);
+                writer.Write(BoundaryMarker2);
+
+                foreach (var s in OrderedStreams) {
+                    s.WriteHeader(writer);
+                    writer.Flush();
+
+                    s.Flush();
+                    s.Stream.Position = 0;
+                    s.Stream.CopyTo(writer.BaseStream);
+
+                    writer.Write(BoundaryMarker3);
+                }
+
+                writer.Flush();
             }
         }
     }

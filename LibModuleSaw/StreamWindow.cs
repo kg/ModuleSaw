@@ -43,6 +43,8 @@ namespace ModuleSaw {
                 BaseStream.Position = Position + Offset;
 
             var actualCount = (int)Math.Min(count, (_Length - Position));
+            if (actualCount <= 0)
+                return 0;
 
             var readCount = BaseStream.Read(buffer, offset, actualCount);
             Position += readCount;
@@ -73,12 +75,12 @@ namespace ModuleSaw {
         }
 
         public override void Close () {
-            BaseStream.Position = Offset + _Length;
+            BaseStream.Position = OriginalPosition;
             base.Close();
         }
 
         protected override void Dispose (bool disposing) {
-            BaseStream.Position = Offset + _Length;
+            BaseStream.Position = OriginalPosition;
             base.Dispose(disposing);
         }
     }

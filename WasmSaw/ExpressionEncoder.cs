@@ -63,6 +63,9 @@ namespace WasmSaw {
                 case ExpressionBody.Types.u32:
                     Builder.Write(e.Body.U.u32, s);
                     break;
+                case ExpressionBody.Types.u1:
+                    Builder.Write((byte)e.Body.U.u32, s);
+                    break;
                 case ExpressionBody.Types.i64:
                     Builder.Write(e.Body.U.i64, s);
                     break;

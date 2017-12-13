@@ -373,6 +373,12 @@ namespace Wasm.Model {
                     case Opcodes.i64_extend_32_s:
                         break;
 
+                    case Opcodes.grow_memory:
+                    case Opcodes.current_memory:
+                        expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+                        expr.Body.Type = ExpressionBody.Types.u1;
+                        break;
+
                     default:
                         return false;
                 }

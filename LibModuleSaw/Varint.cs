@@ -79,7 +79,7 @@ namespace ModuleSaw {
             byte b;
 
             while (true) {
-                if (br.Position == l)
+                if (br.Position >= l)
                     return null;
 
                 b = reader.ReadByte();

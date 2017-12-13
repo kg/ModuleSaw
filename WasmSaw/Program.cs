@@ -36,7 +36,7 @@ namespace WasmSaw {
 
             using (var output = File.OpenWrite(args[1])) {
                 output.SetLength(0);
-                amb.SaveTo(output);
+                amb.SaveTo(output, "webassembly-v1");
             }
 
             Console.WriteLine(args[1]);
@@ -75,7 +75,6 @@ namespace WasmSaw {
             Assert(reader.ReadHeader(), "ReadHeader");
 
             // Record these and then write them at the end of the encoded module
-            var codeSections = new List<CodeSection>();
             var dataSections = new List<DataSection>();
             var t = encoder.Types;
 
@@ -125,8 +124,15 @@ namespace WasmSaw {
                     case SectionTypes.Code:
                         CodeSection cs;
                         Assert(reader.ReadCodeSection(out cs));
-                        codeSections.Add(cs);
+
+                        var functionStream = amb.GetStream("function_bodies");
+                        functionStream.Flush();
+
                         t.function_body.Encode(cs.bodies);
+
+                        foreach (var body in cs.bodies)
+                            EncodeFunctionBody(encoder, functionStream, wasm.BaseStream, body);
+
                         break;
 
                     case SectionTypes.Data:
@@ -137,18 +143,19 @@ namespace WasmSaw {
                         break;
 
                     default:
-                        Console.WriteLine("{0} {1}b", sh.name ?? sh.id.ToString(), sh.payload_len);
-                        wasm.BaseStream.Seek(sh.payload_len, SeekOrigin.Current);
+                        var s = amb.GetStream("unknown_sections");
+                        amb.Write((sbyte)sh.id, s);
+                        amb.Write(sh.name, s);
+                        amb.Write(sh.payload_len, s);
+
+                        s = amb.GetStream("unknown_section_data");
+                        using (var src = new StreamWindow(wasm.BaseStream, sh.payload_start, sh.payload_end - sh.payload_start))
+                            src.CopyTo(s.Stream);
+
+                        wasm.BaseStream.Seek(sh.payload_end, SeekOrigin.Begin);
                         break;
                 }
             }
-
-            var functionStream = amb.GetStream("function_bodies");
-            functionStream.Flush();
-
-            foreach (var cs in codeSections)
-                foreach (var body in cs.bodies)
-                    EncodeFunctionBody(encoder, functionStream, wasm.BaseStream, body);
 
             var dataStream = amb.GetStream("data_segments");
             dataStream.Flush();

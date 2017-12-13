@@ -222,6 +222,7 @@ namespace Wasm.Model {
             none,
             u64,
             u32,
+            u1,
             i64,
             i32,
             f64,

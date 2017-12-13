@@ -21,13 +21,9 @@ namespace ModuleSaw {
             : this (key, new MemoryStream()) {
         }
 
-        internal void WriteHeader (Stream output) {
-            var bytes = Encoding.UTF8.GetBytes(Key);
-            output.Write(bytes, 0, bytes.Length);
-            output.Write(new byte[] { 0 }, 0, 1);
-
-            var length = (int)Stream.Length;
-            output.Write(BitConverter.GetBytes(length), 0, sizeof(int));
+        internal void WriteHeader (BinaryWriter output) {
+            output.Write(Key);
+            output.Write(Stream.Length);
         }
     }
 }

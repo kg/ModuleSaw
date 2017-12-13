@@ -36,11 +36,18 @@ namespace Wasm.Model {
                 return false;
 
             sh.id = (SectionTypes)id;
+
+            var position = Reader.BaseStream.Position;
+
             sh.payload_len = (uint)Reader.ReadLEBUInt();
+
             if (sh.id == 0)
                 sh.name = Reader.ReadPString();
             else
                 sh.name = null;
+
+            sh.payload_start = Reader.BaseStream.Position;
+            sh.payload_end = position + sh.payload_len;
 
             // FIXME
             return true;
@@ -200,12 +207,14 @@ namespace Wasm.Model {
                 );
 
                 var codeOffset = Reader.BaseStream.Position;
-                Reader.BaseStream.Seek(bodyOffset + bodySize, SeekOrigin.Begin);
+                var codeEnd = bodyOffset + bodySize;
+                Reader.BaseStream.Seek(codeEnd, SeekOrigin.Begin);
 
                 return new function_body {
                     body_size = (uint)bodySize,
                     locals = localEntries,
-                    body_offset = codeOffset
+                    body_offset = codeOffset,
+                    body_end = codeEnd
                 };
             });
 

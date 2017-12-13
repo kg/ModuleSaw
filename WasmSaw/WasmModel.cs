@@ -43,6 +43,9 @@ namespace Wasm.Model {
         public SectionTypes id;
         public uint payload_len;
         public string name;
+
+        // Relative to start of file
+        public long payload_start, payload_end;
     }
 
     public struct TypeSection {
@@ -94,7 +97,7 @@ namespace Wasm.Model {
         public local_entry[] locals;
 
         // Position inside stream
-        public long body_offset;
+        public long body_offset, body_end;
     }
 
     public struct local_entry {
