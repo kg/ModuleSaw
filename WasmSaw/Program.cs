@@ -76,6 +76,11 @@ namespace WasmSaw {
                         Assert(mr.ReadCodeSection(out cs));
                         break;
 
+                    case SectionTypes.Data:
+                        DataSection ds;
+                        Assert(mr.ReadDataSection(out ds));
+                        break;
+
                     default:
                         Console.WriteLine("{0} {1}b", sh.name ?? sh.id.ToString(), sh.payload_len);
                         wasm.BaseStream.Seek(sh.payload_len, SeekOrigin.Current);

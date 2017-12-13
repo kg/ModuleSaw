@@ -38,12 +38,14 @@ namespace Wasm.Model {
                 case Opcodes.i32_const:
                 case Opcodes.i64_const:
                 case Opcodes.get_global:
-                // FIXME: Is this right?
-                case Opcodes.end:
-                    return true;
+                    break;
+
+                default:
+                    Console.WriteLine("Unsupported init_expr opcode: {0}", result.Opcode);
+                    return false;
             }
 
-            return false;
+            return (Reader.ReadByte() == (byte)Opcodes.end);
         }
 
         public bool TryReadExpression (out Expression result) {
@@ -52,16 +54,37 @@ namespace Wasm.Model {
             if (!opcode.HasValue)
                 return false;
 
+            result.Opcode = opcode.Value;
+            result.State = ExpressionState.BodyNotRead;
             return true;
         }
 
         public bool TryReadExpressionBody (ref Expression expr) {
+            if (expr.State == ExpressionState.Uninitialized)
+                throw new ArgumentException("Uninitialized expression");
+
             switch (expr.Opcode) {
                 case Opcodes.nop:
                 case Opcodes.unreachable:
                 case Opcodes.end:
-                    return expr.Body.IsValid = true;
-                
+                    break;
+
+                case Opcodes.i32_const:
+                    expr.Body.U.i32 = (int)Reader.ReadLEBInt();
+                    break;
+
+                case Opcodes.i64_const:
+                    expr.Body.U.i64 = (int)Reader.ReadLEBInt();
+                    break;
+
+                case Opcodes.f32_const:
+                    expr.Body.U.f32 = (int)Reader.ReadSingle();
+                    break;
+
+                case Opcodes.f64_const:
+                    expr.Body.U.f64 = (int)Reader.ReadDouble();
+                    break;
+                    
                 case Opcodes.i32_load8_s:
                 case Opcodes.i32_load8_u:
                 case Opcodes.i32_load16_s:
@@ -251,7 +274,8 @@ namespace Wasm.Model {
                     return false;
             }
 
-            return false;
+            expr.State = ExpressionState.Initialized;
+            return true;
         }
     }
 }

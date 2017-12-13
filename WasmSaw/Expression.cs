@@ -207,18 +207,17 @@ namespace Wasm.Model {
         public LanguageTypes BlockType;
     }
 
+    public enum ExpressionState : byte {
+        Uninitialized = 0,
+        BodyNotRead = 1,
+        Initialized = 2
+    }
+
     public struct Expression {
+        public ExpressionState State;
+
         public Opcodes Opcode;
         public ExpressionBody Body;
-
-        public bool IsValid {
-            get {
-                return Body.IsValid;
-            }
-            internal set {
-                Body.IsValid = value;
-            }
-        }
     }
 
     public struct ExpressionBody {
@@ -242,7 +241,6 @@ namespace Wasm.Model {
             public loadstore_immediate loadstore;
         }
 
-        public bool IsValid;
         public Union U;
         public br_table_immediate br_table;
         public Expression[] Expressions;

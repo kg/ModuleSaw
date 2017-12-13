@@ -9,9 +9,11 @@ using ModuleSaw;
 namespace Wasm.Model {
     public class ModuleReader {
         public readonly BinaryReader Reader;
+        public readonly ExpressionReader ExpressionReader;
 
         public ModuleReader (BinaryReader reader) {
             Reader = reader;
+            ExpressionReader = new ExpressionReader(reader);
         }
 
         public bool ReadHeader () {
@@ -67,16 +69,39 @@ namespace Wasm.Model {
                     }
                 );
                 var codeOffset = Reader.BaseStream.Position;
-                Reader.BaseStream.Seek((long)(bodyOffset + bodySize), SeekOrigin.Begin);
+                Reader.BaseStream.Seek(bodyOffset + bodySize, SeekOrigin.Begin);
 
                 return new function_body {
                     body_size = (uint)bodySize,
                     locals = localEntries,
-                    codeOffset = codeOffset
+                    code_offset = codeOffset,
+                    code_size = (bodyOffset + bodySize) - codeOffset
                 };
             });
 
             return cs.bodies != null;
+        }
+
+        public bool ReadDataSection (out DataSection ds) {
+            ds.entries = ReadList((i) => {
+                var index = Reader.ReadLEBUInt();
+                // FIXME: Error handling
+                Expression offset;
+                ExpressionReader.TryReadInitExpr(out offset);
+                var size = Reader.ReadLEBUInt();
+                var dataOffset = Reader.BaseStream.Position;
+
+                Reader.BaseStream.Seek((long)size, SeekOrigin.Current);
+
+                return new data_segment {
+                    index = (uint)index,
+                    offset = offset,
+                    size = (uint)size,
+                    data_offset = dataOffset
+                };
+            });
+
+            return true;
         }
     }
 }

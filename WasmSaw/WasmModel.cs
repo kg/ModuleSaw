@@ -92,7 +92,8 @@ namespace Wasm.Model {
         public local_entry[] locals;
 
         // Position inside stream
-        public long codeOffset;
+        public long code_offset;
+        public long code_size;
     }
 
     public struct local_entry {
@@ -103,7 +104,10 @@ namespace Wasm.Model {
     public struct data_segment {
         public uint index;
         public Expression offset;
-        public byte[] data;
+        public uint size;
+
+        // Position inside stream
+        public long data_offset;
     }
 
     public struct elem_segment {
