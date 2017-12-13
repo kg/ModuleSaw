@@ -84,6 +84,16 @@ namespace Wasm.Model {
                 case Opcodes.f64_const:
                     expr.Body.U.f64 = (int)Reader.ReadDouble();
                     break;
+
+                case Opcodes.get_local:
+                case Opcodes.get_global:
+                    expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+                    break;
+
+                case Opcodes.set_local:
+                case Opcodes.tee_local:
+                case Opcodes.set_global:
+                    return false;
                     
                 case Opcodes.i32_load8_s:
                 case Opcodes.i32_load8_u:

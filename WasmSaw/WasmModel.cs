@@ -147,7 +147,7 @@ namespace Wasm.Model {
     }
 
     public struct table_type {
-        public LanguageTypes element_Type;
+        public LanguageTypes element_type;
         public resizable_limits limits;
     }
 

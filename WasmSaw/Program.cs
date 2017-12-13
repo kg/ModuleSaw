@@ -71,6 +71,36 @@ namespace WasmSaw {
             SectionHeader sh;
             while (mr.ReadSectionHeader(out sh)) {
                 switch (sh.id) {
+                    case SectionTypes.Type:
+                        TypeSection ts;
+                        Assert(mr.ReadTypeSection(out ts));
+                        break;
+
+                    case SectionTypes.Import:
+                        ImportSection ims;
+                        Assert(mr.ReadImportSection(out ims));
+                        break;
+
+                    case SectionTypes.Function:
+                        FunctionSection fs;
+                        Assert(mr.ReadFunctionSection(out fs));
+                        break;
+
+                    case SectionTypes.Global:
+                        GlobalSection gs;
+                        Assert(mr.ReadGlobalSection(out gs));
+                        break;
+
+                    case SectionTypes.Export:
+                        ExportSection exs;
+                        Assert(mr.ReadExportSection(out exs));
+                        break;
+
+                    case SectionTypes.Element:
+                        ElementSection els;
+                        Assert(mr.ReadElementSection(out els));
+                        break;
+
                     case SectionTypes.Code:
                         CodeSection cs;
                         Assert(mr.ReadCodeSection(out cs));

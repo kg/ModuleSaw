@@ -58,6 +58,141 @@ namespace Wasm.Model {
             return result;
         }
 
+        private LanguageTypes ReadLanguageType () {
+            return (LanguageTypes)Reader.ReadLEBInt();
+        }
+
+        public bool ReadFuncType (out func_type ft) {
+            ft = default(func_type);
+            ft.form = (sbyte)Reader.ReadLEBInt();
+            ft.param_types = ReadList((i) => ReadLanguageType());
+            var return_count = Reader.ReadLEBUInt();
+            if (return_count == 1)
+                ft.return_type = ReadLanguageType();
+            else if (return_count > 1)
+                throw new Exception("Multiple return types not implemented");
+            // FIXME
+            return true;
+        }
+    
+        public bool ReadTypeSection (out TypeSection ts) {
+            ts.entries = ReadList((i) => {
+                func_type ft;
+                // FIXME
+                ReadFuncType(out ft);
+                return ft;
+            });
+
+            return ts.entries != null;
+        }
+
+        private bool ReadResizableLimits (out resizable_limits rl) {
+            var flags = Reader.ReadByte() != 0;
+            rl.initial = (uint)Reader.ReadLEBUInt();
+            if (flags)
+                rl.maximum = (uint)Reader.ReadLEBUInt();
+            else
+                rl.maximum = null;
+            // FIXME
+            return true;
+        }
+
+        private bool ReadTableType (out table_type tt) {
+            tt.element_type = ReadLanguageType();
+            return ReadResizableLimits(out tt.limits);
+        }
+
+        private bool ReadMemoryType (out memory_type mt) {
+            return ReadResizableLimits(out mt.limits);
+        }
+
+        private bool ReadGlobalType (out global_type gt) {
+            gt.content_type = ReadLanguageType();
+            gt.mutability = Reader.ReadByte() != 0;
+            // FIXME
+            return true;
+        }
+    
+        public bool ReadImportSection (out ImportSection ims) {
+            ims.entries = ReadList((i) => {
+                var result = new import_entry {
+                    module = Reader.ReadPString(),
+                    field = Reader.ReadPString(),
+                    kind = (external_kind)Reader.ReadByte()
+                };
+
+                table_type tt;
+                memory_type mt;
+                global_type gt;
+
+                switch (result.kind) {
+                    case external_kind.Function:
+                        result.type = Reader.ReadLEBUInt();
+                        break;
+                    case external_kind.Table:
+                        ReadTableType(out tt);
+                        result.type = tt;
+                        break;
+                    case external_kind.Memory:
+                        ReadMemoryType(out mt);
+                        result.type = mt;
+                        break;
+                    case external_kind.Global:
+                        ReadGlobalType(out gt);
+                        result.type = gt;
+                        break;
+                }
+
+                return result;
+            });
+
+            return ims.entries != null;
+        }
+
+        public bool ReadFunctionSection (out FunctionSection fs) {
+            fs.types = ReadList((i) => (uint)Reader.ReadLEBUInt());
+
+            return fs.types != null;
+        }
+
+        public bool ReadGlobalSection (out GlobalSection gs) {
+            gs.globals = ReadList((i) => {
+                var result = default(global_variable);
+                // FIXME
+                ReadGlobalType(out result.type);
+                // FIXME
+                ExpressionReader.TryReadInitExpr(out result.init);
+                return result;
+            });
+
+            return gs.globals != null;
+        }
+
+        public bool ReadExportSection (out ExportSection exs) {
+            exs.entries = ReadList((i) =>
+                new export_entry {
+                    field = Reader.ReadPString(),
+                    kind = (external_kind)Reader.ReadByte(),
+                    index = (uint)Reader.ReadLEBUInt()
+                }
+            );
+
+            return exs.entries != null;
+        }
+        
+        public bool ReadElementSection (out ElementSection els) {
+            els.entries = ReadList((i) => {
+                var result = default(elem_segment);
+                result.index = (uint)Reader.ReadLEBUInt();
+                // FIXME
+                ExpressionReader.TryReadInitExpr(out result.offset);
+                result.elems = ReadList((j) => (uint)Reader.ReadLEBUInt());
+                return result;
+            });
+
+            return els.entries != null;
+        }
+
         public bool ReadCodeSection (out CodeSection cs) {
             cs.bodies = ReadList((i) => {
                 var bodySize = (long)Reader.ReadLEBUInt();
@@ -65,7 +200,7 @@ namespace Wasm.Model {
                 var localEntries = ReadList(
                     (j) => new local_entry {
                         count = (uint)Reader.ReadLEBUInt(),
-                        type = (LanguageTypes)Reader.ReadLEBInt()
+                        type = ReadLanguageType()
                     }
                 );
                 var codeOffset = Reader.BaseStream.Position;
@@ -101,7 +236,7 @@ namespace Wasm.Model {
                 };
             });
 
-            return true;
+            return ds.entries != null;
         }
     }
 }
