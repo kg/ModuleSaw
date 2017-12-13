@@ -203,10 +203,6 @@ namespace Wasm.Model {
         i64_extend_32_s,
     }
 
-    public class Block : List<Expression> {
-        public LanguageTypes BlockType;
-    }
-
     public enum ExpressionState : byte {
         Uninitialized = 0,
         BodyNotRead = 1,
@@ -239,12 +235,17 @@ namespace Wasm.Model {
             public memory_immediate memory;
             [FieldOffset(0)]
             public loadstore_immediate loadstore;
+            [FieldOffset(0)]
+            public block_immediate block;
         }
 
         public Union U;
         public br_table_immediate br_table;
-        public Expression[] Expressions;
-        public Block Block;
+        public Expression[] children;
+    }
+
+    public struct block_immediate {
+        public LanguageTypes block_type;
     }
 
     public struct br_table_immediate {

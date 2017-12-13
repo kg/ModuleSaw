@@ -43,8 +43,6 @@ namespace WasmSaw {
                 ExcludePrimitivesFromPartitioning = false
             };
 
-            // result.AddSchema();
-
             return result;
         }
 
@@ -64,57 +62,82 @@ namespace WasmSaw {
         }
 
         private static void StreamingConvert (BinaryReader wasm, AbstractModuleBuilder amb) {
-            var mr = new ModuleReader(wasm);
+            var reader = new ModuleReader(wasm);
+            var encoder = new ModuleEncoder(amb);
 
-            Assert(mr.ReadHeader(), "ReadHeader");
+            Assert(reader.ReadHeader(), "ReadHeader");
+
+            // Record these and then write them at the end of the encoded module
+            var dataSections = new List<DataSection>();
 
             SectionHeader sh;
-            while (mr.ReadSectionHeader(out sh)) {
+            while (reader.ReadSectionHeader(out sh)) {
+                encoder.Write(ref sh);
+
                 switch (sh.id) {
                     case SectionTypes.Type:
                         TypeSection ts;
-                        Assert(mr.ReadTypeSection(out ts));
+                        Assert(reader.ReadTypeSection(out ts));
+                        encoder.WriteArray(ts.entries);
                         break;
 
                     case SectionTypes.Import:
                         ImportSection ims;
-                        Assert(mr.ReadImportSection(out ims));
+                        Assert(reader.ReadImportSection(out ims));
+                        encoder.WriteArray(ims.entries);
                         break;
 
                     case SectionTypes.Function:
                         FunctionSection fs;
-                        Assert(mr.ReadFunctionSection(out fs));
+                        Assert(reader.ReadFunctionSection(out fs));
+                        encoder.WriteArray(fs.types);
                         break;
 
                     case SectionTypes.Global:
                         GlobalSection gs;
-                        Assert(mr.ReadGlobalSection(out gs));
+                        Assert(reader.ReadGlobalSection(out gs));
+                        encoder.WriteArray(gs.globals);
                         break;
 
                     case SectionTypes.Export:
                         ExportSection exs;
-                        Assert(mr.ReadExportSection(out exs));
+                        Assert(reader.ReadExportSection(out exs));
+                        encoder.WriteArray(exs.entries);
                         break;
 
                     case SectionTypes.Element:
                         ElementSection els;
-                        Assert(mr.ReadElementSection(out els));
+                        Assert(reader.ReadElementSection(out els));
+                        encoder.WriteArray(els.entries);
                         break;
 
                     case SectionTypes.Code:
                         CodeSection cs;
-                        Assert(mr.ReadCodeSection(out cs));
+                        Assert(reader.ReadCodeSection(out cs));
+                        encoder.WriteArray(cs.bodies);
                         break;
 
                     case SectionTypes.Data:
                         DataSection ds;
-                        Assert(mr.ReadDataSection(out ds));
+                        Assert(reader.ReadDataSection(out ds));
+                        dataSections.Add(ds);
+                        encoder.WriteArray(ds.entries);
                         break;
 
                     default:
                         Console.WriteLine("{0} {1}b", sh.name ?? sh.id.ToString(), sh.payload_len);
                         wasm.BaseStream.Seek(sh.payload_len, SeekOrigin.Current);
                         break;
+                }
+            }
+
+            var dataStream = amb.GetStream("data_sections");
+            dataStream.Flush();
+
+            foreach (var ds in dataSections) {
+                foreach (var ent in ds.entries) {
+                    var subStream = new StreamWindow(wasm.BaseStream, ent.data_offset, ent.size);
+                    subStream.CopyTo(dataStream.BaseStream);
                 }
             }
         }

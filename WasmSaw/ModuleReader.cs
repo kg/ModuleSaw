@@ -87,12 +87,12 @@ namespace Wasm.Model {
         }
 
         private bool ReadResizableLimits (out resizable_limits rl) {
-            var flags = Reader.ReadByte() != 0;
+            rl.flags = Reader.ReadByte();
             rl.initial = (uint)Reader.ReadLEBUInt();
-            if (flags)
+            if ((rl.flags & 1) == 1)
                 rl.maximum = (uint)Reader.ReadLEBUInt();
             else
-                rl.maximum = null;
+                rl.maximum = 0;
             // FIXME
             return true;
         }
@@ -121,25 +121,18 @@ namespace Wasm.Model {
                     kind = (external_kind)Reader.ReadByte()
                 };
 
-                table_type tt;
-                memory_type mt;
-                global_type gt;
-
                 switch (result.kind) {
                     case external_kind.Function:
-                        result.type = Reader.ReadLEBUInt();
+                        result.type.Function = (uint)Reader.ReadLEBUInt();
                         break;
                     case external_kind.Table:
-                        ReadTableType(out tt);
-                        result.type = tt;
+                        ReadTableType(out result.type.Table);
                         break;
                     case external_kind.Memory:
-                        ReadMemoryType(out mt);
-                        result.type = mt;
+                        ReadMemoryType(out result.type.Memory);
                         break;
                     case external_kind.Global:
-                        ReadGlobalType(out gt);
-                        result.type = gt;
+                        ReadGlobalType(out result.type.Global);
                         break;
                 }
 

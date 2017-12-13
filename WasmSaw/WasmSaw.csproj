@@ -39,6 +39,8 @@
   <ItemGroup>
     <Compile Include="Expression.cs" />
     <Compile Include="ExpressionReader.cs" />
+    <Compile Include="ExpressionEncoder.cs" />
+    <Compile Include="ModuleEncoder.cs" />
     <Compile Include="ModuleReader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="WasmModel.cs" />

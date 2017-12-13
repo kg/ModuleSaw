@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -27,6 +28,7 @@ namespace Wasm.Model {
     }
 
     public enum LanguageTypes : sbyte {
+        invalid = 0,
         i32 = -0x01,
         i64 = -0x02,
         f32 = -0x03,
@@ -128,11 +130,22 @@ namespace Wasm.Model {
     }
 
     public struct import_entry {
+        [StructLayout(LayoutKind.Explicit)]
+        public struct TypeUnion {
+            [FieldOffset(0)]
+            public uint Function;
+            [FieldOffset(0)]
+            public table_type Table;
+            [FieldOffset(0)]
+            public memory_type Memory;
+            [FieldOffset(0)]
+            public global_type Global;
+        }
+
         public string module;
         public string field;
         public external_kind kind;
-        // FIXME
-        public object type;
+        public TypeUnion type;
     }
 
     public struct func_type {
@@ -156,7 +169,8 @@ namespace Wasm.Model {
     }
 
     public struct resizable_limits {
+        public byte flags;
         public uint initial;
-        public uint? maximum;
+        public uint maximum;
     }
 }

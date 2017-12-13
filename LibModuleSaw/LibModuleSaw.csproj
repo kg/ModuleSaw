@@ -36,9 +36,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AbstractModule.cs" />
-    <Compile Include="ObjectSchema.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="KeyedStream.cs" />
+    <Compile Include="StreamWindow.cs" />
     <Compile Include="Varint.cs" />
   </ItemGroup>
   <ItemGroup>

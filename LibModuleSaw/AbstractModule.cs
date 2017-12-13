@@ -7,25 +7,34 @@ using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public class AbstractModuleBuilder {
-        private KeyedStream
-            IntStream, UIntStream, 
+        internal KeyedStream
+            IntStream, UIntStream,
             LongStream, ULongStream,
-            BooleanStream, TypeIdStream;
+            SByteStream, ByteStream,
+            BooleanStream, TypeIdStream,
+            StringLengthStream, StringStream,
+            ArrayLengthStream;
 
         public Configuration Configuration;
 
         private readonly Dictionary<string, KeyedStream> Streams = 
             new Dictionary<string, KeyedStream>(StringComparer.Ordinal);
+        private readonly List<KeyedStream> OrderedStreams = new List<KeyedStream>();
 
         public AbstractModuleBuilder () {
             Configuration = new Configuration();
 
-            LongStream = GetStream<long>();
-            ULongStream = GetStream<ulong>();
-            IntStream = GetStream<int>();
-            UIntStream = GetStream<uint>();
-            BooleanStream = GetStream<bool>();
+            LongStream = GetStream("u32");
+            ULongStream = GetStream("u64");
+            IntStream = GetStream("i32");
+            UIntStream = GetStream("u32");
+            SByteStream = GetStream("i8");
+            ByteStream = GetStream("u8");
+            BooleanStream = GetStream("u1");
             TypeIdStream = GetStream("typeId");
+            StringLengthStream = GetStream("stringLength");
+            StringStream = GetStream("string");
+            ArrayLengthStream = GetStream("arrayLength");
         }
 
         public KeyedStream GetStream<T> () {
@@ -39,64 +48,91 @@ namespace ModuleSaw {
 
             result = new KeyedStream(key);
             Streams[key] = result;
+            OrderedStreams.Add(result);
             return result;
         }
 
-        public void Write (long value) {
+        public void WriteValue (long value, KeyedStream stream = null) {
             if (Configuration.Varints)
-                LongStream.WriteLEB(value);
+                (stream ?? LongStream).WriteLEB(value);
             else
-                LongStream.Write(value);
+                (stream ?? LongStream).Write(value);
         }
 
-        public void Write (ulong value) {
+        public void WriteValue (ulong value, KeyedStream stream = null) {
             if (Configuration.Varints)
-                ULongStream.WriteLEB(value);
+                (stream ?? ULongStream).WriteLEB(value);
             else
-                ULongStream.Write(value);
+                (stream ?? ULongStream).Write(value);
         }
 
-        public void Write (int value) {
+        public void WriteValue (int value, KeyedStream stream = null) {
             if (Configuration.Varints)
-                IntStream.WriteLEB(value);
+                (stream ?? IntStream).WriteLEB(value);
             else
-                IntStream.Write(value);
+                (stream ?? IntStream).Write(value);
         }
 
-        public void Write (uint value, bool disableUints = false) {
+        public void WriteValue (uint value, KeyedStream stream = null, bool disableUints = false) {
             // FIXME: Separate stream for never-LEB uints?
             if (Configuration.Varints && !disableUints)
-                UIntStream.WriteLEB(value);
+                (stream ?? UIntStream).WriteLEB(value);
             else
-                UIntStream.Write(value);
+                (stream ?? UIntStream).Write(value);
         }
 
-        public void Write (bool value) {
+        public void WriteValue (bool value) {
             BooleanStream.Write(value ? 1 : 0);
         }
 
-        public void Write<T> (ref T value) {
-            var schema = Configuration.GetSchema<T>();
-            schema.Write(this, ref value);
+        public void WriteValue (sbyte b) {
+            SByteStream.Write(b);
         }
 
-        public void Write<T> (T value) {
-            Write(ref value);
+        public void WriteValue (byte b) {
+            ByteStream.Write(b);
+        }
+
+        public void WriteString (string text) {
+            var length = 0;
+            if (text != null)
+                length = text.Length + 1;
+
+            // Write 0 if null, 1+len if non-null
+            if (Configuration.Varints)
+                StringLengthStream.WriteLEB(length);
+            else
+                StringLengthStream.Write(length);
+
+            if ((text != null) && text.Length > 0)
+                StringStream.Write(text.ToCharArray());
+        }
+
+        public void WriteArrayLength (Array array) {
+            var length = 0;
+            if (array != null)
+                length = array.Length + 1;
+
+            if (Configuration.Varints)
+                ArrayLengthStream.WriteLEB(length);
+            else
+                ArrayLengthStream.Write(length);
         }
 
         public void SaveTo (Stream output) {
+            var zero = new byte[1];
             // TODO: Header
 
-            foreach (var kvp in Streams) {
-                var bytes = Encoding.UTF8.GetBytes(kvp.Key);
+            foreach (var s in OrderedStreams) {
+                var bytes = Encoding.UTF8.GetBytes(s.Key);
                 output.Write(bytes, 0, bytes.Length);
+                output.Write(zero, 0, 1);
 
-                var s = kvp.Value.Stream;
-                var length = (int)s.Length;
+                var length = (int)s.Stream.Length;
 
                 output.Write(BitConverter.GetBytes(length), 0, sizeof(int));
 
-                bytes = s.GetBuffer();
+                bytes = s.Stream.GetBuffer();
                 output.Write(bytes, 0, length);
             }
         }
