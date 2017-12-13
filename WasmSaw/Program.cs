@@ -162,7 +162,6 @@ namespace WasmSaw {
                     var ee = encoder.ExpressionEncoder;
                     Expression e;
 
-                    Console.WriteLine("--");
                     while (reader.TryReadExpression(out e)) {
                         if (!reader.TryReadExpressionBody(ref e))
                             throw new Exception("Failed to read body of " + e.Opcode);

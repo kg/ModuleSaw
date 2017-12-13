@@ -217,6 +217,23 @@ namespace Wasm.Model {
     }
 
     public struct ExpressionBody {
+        [Flags]
+        public enum Types : byte {
+            none,
+            u64,
+            u32,
+            i64,
+            i32,
+            f64,
+            f32,
+            memory,
+            type,
+            br_table,
+
+            // An expression can have both an immediate and children so this is a flag
+            children = 0x80,
+        }
+
         [StructLayout(LayoutKind.Explicit)]
         public struct Union {
             [FieldOffset(0)]
@@ -234,14 +251,14 @@ namespace Wasm.Model {
             [FieldOffset(0)]
             public memory_immediate memory;
             [FieldOffset(0)]
-            public loadstore_immediate loadstore;
-            [FieldOffset(0)]
             public LanguageTypes type;
         }
 
+        public Types Type;
+
         public Union U;
         public br_table_immediate br_table;
-        public Expression[] children;
+        public List<Expression> children;
     }
 
     public struct br_table_immediate {
@@ -251,11 +268,6 @@ namespace Wasm.Model {
 
     public struct memory_immediate {
         public uint flags;
-        public uint offset;
-    }
-    
-    public struct loadstore_immediate {
-        public uint alignment_log2;
         public uint offset;
     }
 

@@ -62,19 +62,13 @@ namespace Wasm.Model {
             result.Opcode = opcode.Value;
             result.State = ExpressionState.BodyNotRead;
 
-            Console.Write("{0} 0x{1:X2}:{2} ", new string(' ', Depth), (int)result.Opcode, result.Opcode);
             Depth += 1;
 
             return true;
         }
 
-        private bool GatherChildNodesUntil (out Expression[] result, out Expression last, Predicate<Expression> pred) {
-            Console.WriteLine();
-
-            result = null;
-            last = default(Expression);
-
-            var list = new List<Expression>();
+        private bool GatherChildNodesUntil (ref ExpressionBody body, Predicate<Expression> pred) {
+            var result = new List<Expression>();
 
             while (true) {
                 Expression e;
@@ -84,27 +78,13 @@ namespace Wasm.Model {
                     return false;
 
                 if (pred(e)) {
-                    result = list.ToArray();
-                    last = e;
+                    body.children = result.Count > 0 ? result : null;
+                    body.Type = body.Type | ExpressionBody.Types.children;
                     return true;
                 }
 
-                list.Add(e);
+                result.Add(e);
             }
-        }
-
-        private bool TryReadChildNodes (ref Expression expr, int count) {
-            Console.WriteLine();
-
-            var result = new Expression[count];
-            for (var i = 0; i < count; i++) {
-                if (!TryReadExpression(out result[i]))
-                    return false;
-                if (!TryReadExpressionBody(ref result[i]))
-                    return false;
-            }
-            expr.Body.children = result;
-            return true;
         }
 
         private int Depth = 0;
@@ -126,21 +106,19 @@ namespace Wasm.Model {
                     case Opcodes.block:
                     case Opcodes.loop:
                         expr.Body.U.type = (LanguageTypes)Reader.ReadLEBInt();
-                        Console.Write(expr.Body.U.type);
+                        expr.Body.Type = ExpressionBody.Types.type;
 
-                        Expression end;
-                        if (!GatherChildNodesUntil(out expr.Body.children, out end, e => e.Opcode == Opcodes.end))
+                        if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end))
                             return false;
 
                         break;
 
                     case Opcodes.@if:
                         expr.Body.U.type = (LanguageTypes)Reader.ReadLEBInt();
-                        Console.Write(expr.Body.U.type);
+                        expr.Body.Type = ExpressionBody.Types.type;
 
-                        Expression endOrElse;
                         if (!GatherChildNodesUntil(
-                            out expr.Body.children, out endOrElse, 
+                            ref expr.Body, 
                             e => (e.Opcode == Opcodes.end) || (e.Opcode == Opcodes.@else))
                         )
                             return false;
@@ -148,46 +126,64 @@ namespace Wasm.Model {
                         break;
 
                     case Opcodes.@else:
-                        if (!GatherChildNodesUntil(out expr.Body.children, out end, e => e.Opcode == Opcodes.end))
+                        if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end))
                             return false;
 
                         break;
 
+                    case Opcodes.call:
                     case Opcodes.br:
                     case Opcodes.br_if:
+                    case Opcodes.get_local:
+                    case Opcodes.get_global:
+                    case Opcodes.set_local:
+                    case Opcodes.tee_local:
+                    case Opcodes.set_global:
                         expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+                        expr.Body.Type = ExpressionBody.Types.u32;
+
+                        break;
+
+                    case Opcodes.br_table:
+                        var target_count = (uint)Reader.ReadLEBUInt();
+                        var target_table = new uint[target_count];
+                        for (var i = 0; i < target_count; i++)
+                            target_table[i] = (uint)Reader.ReadLEBUInt();
+
+                        expr.Body.br_table = new br_table_immediate {
+                            target_table = target_table,
+                            default_target = (uint)Reader.ReadLEBUInt()
+                        };
+
+                        expr.Body.Type = ExpressionBody.Types.br_table;
+                        break;
+
+                    case Opcodes.call_indirect:
+                        expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+                        expr.Body.Type = ExpressionBody.Types.u32;
+                        // FIXME
+                        var reserved = Reader.ReadLEBUInt();
 
                         break;
 
                     case Opcodes.i32_const:
                         expr.Body.U.i32 = (int)Reader.ReadLEBInt();
-                        Console.Write(expr.Body.U.i32);
+                        expr.Body.Type = ExpressionBody.Types.i32;
                         break;
 
                     case Opcodes.i64_const:
                         expr.Body.U.i64 = (int)Reader.ReadLEBInt();
+                        expr.Body.Type = ExpressionBody.Types.i64;
                         break;
 
                     case Opcodes.f32_const:
                         expr.Body.U.f32 = (int)Reader.ReadSingle();
+                        expr.Body.Type = ExpressionBody.Types.f32;
                         break;
 
                     case Opcodes.f64_const:
                         expr.Body.U.f64 = (int)Reader.ReadDouble();
-                        break;
-
-                    case Opcodes.get_local:
-                    case Opcodes.get_global:
-                        expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
-                        Console.Write(expr.Body.U.u32);
-                        break;
-
-                    case Opcodes.set_local:
-                    case Opcodes.tee_local:
-                    case Opcodes.set_global:
-                        expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
-                        Console.Write(expr.Body.U.u32);
-
+                        expr.Body.Type = ExpressionBody.Types.f64;
                         break;
 
                     case Opcodes.i32_load8_s:
@@ -204,6 +200,7 @@ namespace Wasm.Model {
                     case Opcodes.i64_load:
                     case Opcodes.f32_load:
                     case Opcodes.f64_load:
+                        expr.Body.Type = ExpressionBody.Types.memory;
                         if (!ReadMemoryImmediate(out expr.Body.U.memory))
                             return false;
 
@@ -218,6 +215,7 @@ namespace Wasm.Model {
                     case Opcodes.i64_store:
                     case Opcodes.f32_store:
                     case Opcodes.f64_store:
+                        expr.Body.Type = ExpressionBody.Types.memory;
                         if (!ReadMemoryImmediate(out expr.Body.U.memory))
                             return false;
 
@@ -382,7 +380,6 @@ namespace Wasm.Model {
                 expr.State = ExpressionState.Initialized;
                 return true;
             } finally {
-                Console.WriteLine();
                 Depth -= 1;
             }
         }

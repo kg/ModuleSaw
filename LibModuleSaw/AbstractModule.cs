@@ -7,10 +7,11 @@ using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public class AbstractModuleBuilder {
-        internal KeyedStream
+        public KeyedStream
             IntStream, UIntStream,
             LongStream, ULongStream,
             SByteStream, ByteStream,
+            SingleStream, DoubleStream,
             BooleanStream, ArrayLengthStream,
             StringLengthStream, StringStream;
 
@@ -29,6 +30,8 @@ namespace ModuleSaw {
             UIntStream = GetStream("u32");
             SByteStream = GetStream("i8");
             ByteStream = GetStream("u8");
+            SingleStream = GetStream("f32");
+            DoubleStream = GetStream("f64");
             BooleanStream = GetStream("u1");
             StringLengthStream = GetStream("stringLength");
             StringStream = GetStream("string");
@@ -107,14 +110,10 @@ namespace ModuleSaw {
         }
 
         public void WriteArrayLength (Array array) {
-            var length = 0;
-            if (array != null)
-                length = array.Length + 1;
-
-            if (Configuration.Varints)
-                ArrayLengthStream.WriteLEB(length);
+            if (array == null)
+                Write((uint)0, ArrayLengthStream);
             else
-                ArrayLengthStream.Write(length);
+                Write((uint)array.Length + 1, ArrayLengthStream);
         }
 
         public void SaveTo (Stream output) {
