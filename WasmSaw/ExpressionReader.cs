@@ -134,11 +134,11 @@ namespace Wasm.Model {
                     case Opcodes.call:
                     case Opcodes.br:
                     case Opcodes.br_if:
-                    case Opcodes.get_local:
                     case Opcodes.get_global:
+                    case Opcodes.set_global:
+                    case Opcodes.get_local:
                     case Opcodes.set_local:
                     case Opcodes.tee_local:
-                    case Opcodes.set_global:
                         expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
                         expr.Body.Type = ExpressionBody.Types.u32;
 
