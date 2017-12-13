@@ -68,10 +68,11 @@ namespace Wasm.Model {
             return true;
         }
 
-        private bool GatherChildNodesUntilEnd (out Expression[] result) {
+        private bool GatherChildNodesUntil (out Expression[] result, out Expression last, Predicate<Expression> pred) {
             Console.WriteLine();
 
             result = null;
+            last = default(Expression);
 
             var list = new List<Expression>();
 
@@ -82,8 +83,9 @@ namespace Wasm.Model {
                 if (!TryReadExpressionBody(ref e))
                     return false;
 
-                if (e.Opcode == Opcodes.end) {
+                if (pred(e)) {
                     result = list.ToArray();
+                    last = e;
                     return true;
                 }
 
@@ -116,6 +118,9 @@ namespace Wasm.Model {
                     case Opcodes.nop:
                     case Opcodes.unreachable:
                     case Opcodes.end:
+                    case Opcodes.@return:
+                    case Opcodes.drop:
+                    case Opcodes.select:
                         break;
 
                     case Opcodes.block:
@@ -123,13 +128,36 @@ namespace Wasm.Model {
                         expr.Body.U.type = (LanguageTypes)Reader.ReadLEBInt();
                         Console.Write(expr.Body.U.type);
 
-                        if (!GatherChildNodesUntilEnd(out expr.Body.children))
+                        Expression end;
+                        if (!GatherChildNodesUntil(out expr.Body.children, out end, e => e.Opcode == Opcodes.end))
                             return false;
 
                         break;
 
                     case Opcodes.@if:
-                        return false;
+                        expr.Body.U.type = (LanguageTypes)Reader.ReadLEBInt();
+                        Console.Write(expr.Body.U.type);
+
+                        Expression endOrElse;
+                        if (!GatherChildNodesUntil(
+                            out expr.Body.children, out endOrElse, 
+                            e => (e.Opcode == Opcodes.end) || (e.Opcode == Opcodes.@else))
+                        )
+                            return false;
+
+                        break;
+
+                    case Opcodes.@else:
+                        if (!GatherChildNodesUntil(out expr.Body.children, out end, e => e.Opcode == Opcodes.end))
+                            return false;
+
+                        break;
+
+                    case Opcodes.br:
+                    case Opcodes.br_if:
+                        expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+
+                        break;
 
                     case Opcodes.i32_const:
                         expr.Body.U.i32 = (int)Reader.ReadLEBInt();
@@ -176,7 +204,8 @@ namespace Wasm.Model {
                     case Opcodes.i64_load:
                     case Opcodes.f32_load:
                     case Opcodes.f64_load:
-                        return false;
+                        if (!ReadMemoryImmediate(out expr.Body.U.memory))
+                            return false;
 
                         break;
 
@@ -189,7 +218,8 @@ namespace Wasm.Model {
                     case Opcodes.i64_store:
                     case Opcodes.f32_store:
                     case Opcodes.f64_store:
-                        return false;
+                        if (!ReadMemoryImmediate(out expr.Body.U.memory))
+                            return false;
 
                         break;
 
@@ -355,6 +385,12 @@ namespace Wasm.Model {
                 Console.WriteLine();
                 Depth -= 1;
             }
+        }
+
+        public bool ReadMemoryImmediate (out memory_immediate memory) {
+            memory.flags = (uint)Reader.ReadLEBUInt();
+            memory.offset = (uint)Reader.ReadLEBUInt();
+            return true;
         }
     }
 }
