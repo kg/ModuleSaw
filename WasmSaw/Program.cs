@@ -21,6 +21,8 @@ namespace WasmSaw {
 
             using (var inputFile = File.OpenRead(args[0]))
             using (var outputFile = File.OpenWrite(args[1])) {
+                outputFile.SetLength(0);
+
                 if (IsThisWasm(inputFile))
                     WasmToMsaw(inputFile, outputFile, config);
                 else if (IsThisMsaw(inputFile, config))
@@ -235,6 +237,7 @@ namespace WasmSaw {
             var sectionIds = amr.Open(amr.Streams["section_id"]);
             var sectionNames = amr.Open(amr.Streams["section_name"]);
             var sectionPayloadLengths = amr.Open(amr.Streams["section_payload_len"]);
+            var unknownSectionData = amr.Open(amr.Streams["unknown_section_data"]);
 
             var sectionCount = (uint)sectionIds.Length;
 
@@ -242,20 +245,56 @@ namespace WasmSaw {
                 var id = sectionIds.ReadByte();
                 string name = null;
                 if (id == 0)
-                    name = amr.ReadString(sectionNames);
+                    name = sectionNames.ReadString();
                 var payload_len = sectionPayloadLengths.ReadUInt32();
 
                 writer.Write(id);
                 writer.WriteLEB(payload_len);
+
                 if (id == 0) {
-                    writer.WriteLEB(name.Length);
-                    writer.Write(Encoding.UTF8.GetBytes(name));
+                    writer.Flush();
+                    var initOffset = writer.BaseStream.Position;
+
+                    var nameBytes = Encoding.UTF8.GetBytes(name);
+                    writer.WriteLEB((uint)nameBytes.Length);
+                    writer.Write(nameBytes);
+
+                    writer.Flush();
+                    var lastOffset = writer.BaseStream.Position;
+
+                    // HACK
+                    payload_len -= (uint)(lastOffset - initOffset);
                 }
 
-                ;
+                if ((id <= 0) || (id >= (sbyte)SectionTypes.Unknown)) {
+                    // FIXME: Use CopyTo?
+                    writer.Write(unknownSectionData.ReadBytes((int)payload_len));
+                } else {
+                    DecodeSectionBody(amr, writer, (SectionTypes)id, payload_len);
+                }
             }
 
             writer.Dispose();
+        }
+
+        private static void DecodeSectionBody (
+            AbstractModuleReader amr, BinaryWriter writer, 
+            SectionTypes id, uint payload_len
+        ) {
+            var td = new TypeDecoders(amr);
+
+            switch (id) {
+                case SectionTypes.Type:
+                    break;
+
+                default:
+                    throw new NotImplementedException(id.ToString());
+            }
+
+            for (int i = 0; i < payload_len; i++)
+                writer.Write((byte)id);
+
+            // FIXME
         }
     }
 }

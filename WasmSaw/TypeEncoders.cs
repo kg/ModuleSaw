@@ -72,7 +72,7 @@ namespace WasmSaw {
             public override void Encode (ref SectionHeader value) {
                 ids.Write((byte)value.id);
                 if (value.id == 0)
-                    Builder.Write(value.name, names);
+                    names.Write(value.name);
                 Builder.Write(value.payload_len, payload_lens);
             }
         }

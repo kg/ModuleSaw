@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 
 namespace Wasm.Model {
     public enum SectionTypes : sbyte {
+        Custom = 0,
+
         Type = 1,
         Import,
         Function,
@@ -17,7 +19,9 @@ namespace Wasm.Model {
         Start,
         Element,
         Code,
-        Data
+        Data,
+
+        Unknown
     }
 
     public enum external_kind : sbyte {

@@ -143,14 +143,18 @@ namespace ModuleSaw {
         }
 
         public string ReadString (AbstractModuleStreamReader stream = null) {
-            var lengthPlusOne = StringLengthStream.ReadInt32();
+            var lengthPlusOne = StringLengthStream.ReadUInt32();
             if (lengthPlusOne == 0)
                 return null;
             else if (lengthPlusOne == 1)
                 return "";
 
-            var chars = (stream ?? StringStream).ReadChars(lengthPlusOne - 1);
-            return new string(chars);
+            var bytes = (stream ?? StringStream).ReadBytes((int)(lengthPlusOne - 1));
+            return Encoding.UTF8.GetString(bytes);
+        }
+
+        public uint ReadArrayLength () {
+            return ArrayLengthStream.ReadUInt32();
         }
     }
 

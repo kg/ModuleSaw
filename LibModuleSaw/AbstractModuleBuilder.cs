@@ -109,26 +109,31 @@ namespace ModuleSaw {
         }
 
         public void Write (string text, KeyedStream stream = null) {
-            var length = 0;
-            if (text != null)
-                length = text.Length + 1;
+            if (text == null) {
+                if (Configuration.Varints)
+                    StringLengthStream.WriteLEB((uint)0);
+                else
+                    StringLengthStream.Write((uint)0);
 
-            // Write 0 if null, 1+len if non-null
-            if (Configuration.Varints)
-                StringLengthStream.WriteLEB(length);
-            else
-                StringLengthStream.Write(length);
+                return;
+            }
 
-            if ((text != null) && text.Length > 0)
-                (stream ?? StringStream).Write(text.ToCharArray());
+            if (text != null) {
+                var bytes = Encoding.UTF8.GetBytes(text);
+                var length = (uint)(bytes.Length + 1);
+
+                if (Configuration.Varints)
+                    StringLengthStream.WriteLEB(length);
+                else
+                    StringLengthStream.Write(length);
+
+                (stream ?? StringStream).Write(bytes);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteArrayLength (Array array) {
-            if (array == null)
-                Write((uint)0, ArrayLengthStream);
-            else
-                Write((uint)array.Length + 1, ArrayLengthStream);
+            Write((uint)array.Length, ArrayLengthStream);
         }
 
         public void SaveTo (Stream output, string subFormat) {
