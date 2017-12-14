@@ -33,7 +33,7 @@ namespace ModuleSaw {
         public AbstractModuleBuilder () {
             Configuration = new Configuration();
 
-            LongStream = GetStream("u32");
+            LongStream = GetStream("i64");
             ULongStream = GetStream("u64");
             IntStream = GetStream("i32");
             UIntStream = GetStream("u32");

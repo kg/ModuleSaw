@@ -61,16 +61,18 @@ namespace WasmSaw {
         }
 
         public class SectionHeaderEncoder : TypeEncoder<SectionHeader> {
-            KeyedStream payload_lens, ids;
+            KeyedStream payload_lens, ids, names;
 
             public SectionHeaderEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 ids = GetStream("section_id");
+                names = GetStream("section_name");
                 payload_lens = GetStream("section_payload_len");
             }
 
             public override void Encode (ref SectionHeader value) {
                 ids.Write((byte)value.id);
-                Builder.Write(value.name);
+                if (value.id == 0)
+                    Builder.Write(value.name, names);
                 Builder.Write(value.payload_len, payload_lens);
             }
         }

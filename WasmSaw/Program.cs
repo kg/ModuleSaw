@@ -48,20 +48,8 @@ namespace WasmSaw {
             input.Position = 0;
 
             using (var reader = new BinaryReader(input, Encoding.UTF8, true)) {
-                var amr = new AbstractModuleReader(reader, configuration);
-                return amr.ReadPrologue();
-            }
-        }
-
-        public static void MsawToWasm (Stream input, Stream output, Configuration config) {
-            input.Position = 0;
-
-            using (var reader = new BinaryReader(input, Encoding.UTF8, true)) {
-                var amr = new AbstractModuleReader(reader, config);
-
-                Assert(amr.ReadHeader());
-
-                throw new Exception();
+                var prologue = reader.ReadBytes(AbstractModuleBuilder.Prologue.Length);
+                return prologue.SequenceEqual(AbstractModuleBuilder.Prologue);
             }
         }
 
@@ -231,6 +219,43 @@ namespace WasmSaw {
                     throw new Exception("Found no end opcode in function body");
                 }
             }
+        }
+
+        public static void MsawToWasm (Stream input, Stream output, Configuration config) {
+            input.Position = 0;
+
+            var amr = new AbstractModuleReader(input, config);
+            var writer = new BinaryWriter(output, Encoding.UTF8, true);
+
+            Assert(amr.ReadHeader());
+
+            writer.Write((uint)0x6d736100);
+            writer.Write((uint)1);
+
+            var sectionIds = amr.Open(amr.Streams["section_id"]);
+            var sectionNames = amr.Open(amr.Streams["section_name"]);
+            var sectionPayloadLengths = amr.Open(amr.Streams["section_payload_len"]);
+
+            var sectionCount = (uint)sectionIds.Length;
+
+            for (int i = 0; i < sectionCount; i++) {
+                var id = sectionIds.ReadByte();
+                string name = null;
+                if (id == 0)
+                    name = amr.ReadString(sectionNames);
+                var payload_len = sectionPayloadLengths.ReadUInt32();
+
+                writer.Write(id);
+                writer.WriteLEB(payload_len);
+                if (id == 0) {
+                    writer.WriteLEB(name.Length);
+                    writer.Write(Encoding.UTF8.GetBytes(name));
+                }
+
+                ;
+            }
+
+            writer.Dispose();
         }
     }
 }

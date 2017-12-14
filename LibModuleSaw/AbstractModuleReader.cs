@@ -50,6 +50,8 @@ namespace ModuleSaw {
         }
 
         public readonly BinaryReader Reader;
+        private readonly MemoryStream BaseStream;
+        private readonly byte[] Bytes;
 
         public Configuration Configuration;
 
@@ -57,37 +59,59 @@ namespace ModuleSaw {
 
         public string SubFormat { get; private set; }
 
-        public AbstractModuleReader (BinaryReader input, Configuration configuration) {
-            Reader = input;
+        private AbstractModuleStreamReader
+            IntStream, UIntStream,
+            LongStream, ULongStream,
+            SByteStream, ByteStream,
+            SingleStream, DoubleStream,
+            BooleanStream, ArrayLengthStream,
+            StringLengthStream, StringStream;
+
+        public AbstractModuleReader (Stream input, Configuration configuration) {
             Configuration = configuration;
+
+            // This sucks :(
+            Bytes = new byte[input.Length];
+            input.Read(Bytes, 0, (int)input.Length);
+
+            BaseStream = new MemoryStream(Bytes, false);
+            Reader = new AbstractModuleStreamReader(Configuration, BaseStream);
         }
 
-        public bool ReadPrologue () {
+        public AbstractModuleStreamReader Open (StreamHeader header) {
+            var stream = new MemoryStream(Bytes, (int)header.Offset, (int)header.Length, false);
+            return new AbstractModuleStreamReader(Configuration, stream);
+        }
+
+        private bool ReadPrologue () {
             var buffer = Reader.ReadBytes(AbstractModuleBuilder.Prologue.Length);
             return buffer.SequenceEqual(AbstractModuleBuilder.Prologue);
         }
         
         public bool ReadHeader () {
+            // Access base methods
+            var br = (BinaryReader)Reader;
+
             if (!ReadPrologue())
                 return false;
 
-            SubFormat = Reader.ReadString();
+            SubFormat = br.ReadString();
 
-            if (Reader.ReadUInt32() != AbstractModuleBuilder.BoundaryMarker1)
+            if (br.ReadUInt32() != AbstractModuleBuilder.BoundaryMarker1)
                 return false;
 
-            var streamCount = Reader.ReadInt32();
+            var streamCount = br.ReadInt32();
             var headers = new StreamHeader[streamCount];
             var keyBuffer = new byte[KeyedStream.MaxKeyLength];
             Streams.Table.Clear();
 
             for (int i = 0; i < streamCount; i++) {
-                Reader.Read(keyBuffer, 0, keyBuffer.Length);
+                br.Read(keyBuffer, 0, keyBuffer.Length);
 
                 headers[i] = new StreamHeader {
                     Key = Encoding.UTF8.GetString(keyBuffer, 0, Array.IndexOf(keyBuffer, (byte)0)),
-                    Offset = Reader.ReadInt64(),
-                    Length = Reader.ReadInt64()
+                    Offset = br.ReadInt64(),
+                    Length = br.ReadInt64()
                 };
 
                 Streams.Table.Add(headers[i].Key, headers[i]);
@@ -98,7 +122,77 @@ namespace ModuleSaw {
             if (Reader.ReadUInt32() != AbstractModuleBuilder.BoundaryMarker2)
                 return false;
 
+            PreopenStreams();
+
             return true;
+        }
+
+        private void PreopenStreams () {
+            IntStream = Open(Streams["i32"]);
+            UIntStream = Open(Streams["u32"]);
+            LongStream = Open(Streams["i64"]);
+            ULongStream = Open(Streams["u64"]);
+            SByteStream = Open(Streams["i8"]);
+            ByteStream = Open(Streams["u8"]);
+            SingleStream = Open(Streams["f32"]);
+            DoubleStream = Open(Streams["f64"]);
+            BooleanStream = Open(Streams["u1"]);
+            ArrayLengthStream = Open(Streams["arrayLength"]);
+            StringLengthStream = Open(Streams["stringLength"]);
+            StringStream = Open(Streams["string"]);
+        }
+
+        public string ReadString (AbstractModuleStreamReader stream = null) {
+            var lengthPlusOne = StringLengthStream.ReadInt32();
+            if (lengthPlusOne == 0)
+                return null;
+            else if (lengthPlusOne == 1)
+                return "";
+
+            var chars = (stream ?? StringStream).ReadChars(lengthPlusOne - 1);
+            return new string(chars);
+        }
+    }
+
+    public class AbstractModuleStreamReader : BinaryReader {
+        public readonly Configuration Configuration;
+
+        public AbstractModuleStreamReader (Configuration configuration, Stream input) 
+            : base(input, Encoding.UTF8, false) 
+        {
+            Configuration = configuration;
+        }
+
+        public long Length {
+            get => BaseStream.Length;
+        }
+
+        new public int ReadInt32 () {
+            if (Configuration.Varints)
+                return (int)this.ReadLEBInt();
+            else
+                return base.ReadInt32();
+        }
+
+        new public uint ReadUInt32 () {
+            if (Configuration.Varints)
+                return (uint)this.ReadLEBUInt();
+            else
+                return base.ReadUInt32();
+        }
+
+        new public long ReadInt64 () {
+            if (Configuration.Varints)
+                return (long)this.ReadLEBInt();
+            else
+                return base.ReadInt64();
+        }
+
+        new public ulong ReadUInt64 () {
+            if (Configuration.Varints)
+                return (ulong)this.ReadLEBUInt();
+            else
+                return base.ReadUInt64();
         }
     }
 }
