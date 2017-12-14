@@ -22,42 +22,35 @@ namespace ModuleSaw {
         }
 
         public static void WriteLEB (this BinaryWriter writer, ulong value) {
-            var _value = value;
-
             do {
-                var b = (byte)(value & 0x7F);
+                var b = (byte)(value & 0x7Ful);
                 value >>= 7;
 
-                if (value == 0) {
-                    writer.Write(b);
-                    break;
-                } else {
+                if (value != 0)
                     b |= 0x80;
-                    writer.Write(b);
-                }
-            } while (true);
+
+                writer.Write(b);
+            } while (value != 0);
         }
 
         public static void WriteLEB (this BinaryWriter writer, long value) {
-            bool negative = value < 0;
+            bool more = true;
 
-            do {
-                var b = (byte)(value & 0x7F);
+            while (more) {
+                var b = (byte)(value & 0x7FL);
                 value >>= 7;
 
-                bool flag = (b & 0x40) != 0;
-
-                var abort = (negative && (value == -1) && flag) ||
-                    (!negative && (value == 0) && !flag);
-
-                if (abort) {
-                    writer.Write((byte)b);
-                    break;
-                } else {
+                bool signBit = (b & 0x40u) != 0;
+                if (
+                    ((value == 0) && !signBit) ||
+                    ((value == -1) && signBit)
+                )
+                    more = false;
+                else
                     b |= 0x80;
-                    writer.Write((byte)b);
-                }
-            } while (true);
+
+                writer.Write(b);
+            }
         }
 
         public static void WriteLEB (this BinaryWriter writer, int value) {
@@ -122,6 +115,12 @@ namespace ModuleSaw {
             var length = reader.ReadLEBUInt();
             var body = reader.ReadBytes((int)length.Value);
             return Encoding.UTF8.GetString(body);
+        }
+
+        public static void WritePString (this BinaryWriter writer, string text) {
+            var bytes = Encoding.UTF8.GetBytes(text);
+            writer.WriteLEB((uint)bytes.Length);
+            writer.Write(bytes);
         }
     }
 }

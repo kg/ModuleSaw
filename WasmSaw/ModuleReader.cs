@@ -154,6 +154,16 @@ namespace Wasm.Model {
             return ims.entries != null;
         }
 
+        public bool ReadTableSection (out TableSection tbs) {
+            tbs.entries = ReadList((i) => {
+                table_type tt;
+                ReadTableType(out tt);
+                return tt;
+            });
+
+            return tbs.entries != null;
+        }
+
         public bool ReadFunctionSection (out FunctionSection fs) {
             fs.types = ReadList((i) => (uint)Reader.ReadLEBUInt());
 

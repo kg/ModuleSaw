@@ -42,10 +42,12 @@
     <Compile Include="ExpressionEncoder.cs" />
     <Compile Include="ModuleEncoder.cs" />
     <Compile Include="ModuleReader.cs" />
+    <Compile Include="MsawToWasm.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="TypeDecoders.cs" />
     <Compile Include="TypeEncoders.cs" />
     <Compile Include="WasmModel.cs" />
+    <Compile Include="WasmToMsaw.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LibModuleSaw\LibModuleSaw.csproj">

@@ -14,6 +14,10 @@ namespace WasmSaw {
             ModuleEncoder = moduleEncoder;
         }
 
+        public TypeEncoders Types {
+            get => ModuleEncoder.Types;
+        }
+
         public AbstractModuleBuilder Builder {
             get => ModuleEncoder.Builder;
         }
@@ -42,6 +46,10 @@ namespace WasmSaw {
     public class TypeEncoders {
         public readonly SectionHeaderEncoder SectionHeader;
         public readonly func_typeEncoder func_type;
+        public readonly resizable_limitsEncoder resizable_limits;
+        public readonly table_typeEncoder table_type;
+        public readonly global_typeEncoder global_type;
+        public readonly memory_typeEncoder memory_type;
         public readonly import_entryEncoder import_entry;
         public readonly global_variableEncoder global_variable;
         public readonly export_entryEncoder export_entry;
@@ -52,6 +60,10 @@ namespace WasmSaw {
         public TypeEncoders (ModuleEncoder moduleEncoder) {
             SectionHeader = new SectionHeaderEncoder(moduleEncoder);
             func_type = new func_typeEncoder(moduleEncoder);
+            resizable_limits = new resizable_limitsEncoder(moduleEncoder);
+            table_type = new table_typeEncoder(moduleEncoder);
+            global_type = new global_typeEncoder(moduleEncoder);
+            memory_type = new memory_typeEncoder(moduleEncoder);
             import_entry = new import_entryEncoder(moduleEncoder);
             global_variable = new global_variableEncoder(moduleEncoder);
             export_entry = new export_entryEncoder(moduleEncoder);
@@ -70,7 +82,7 @@ namespace WasmSaw {
             }
 
             public override void Encode (ref SectionHeader value) {
-                ids.Write((byte)value.id);
+                ids.Write((sbyte)value.id);
                 if (value.id == 0)
                     names.Write(value.name);
                 Builder.Write(value.payload_len, payload_lens);
@@ -92,19 +104,93 @@ namespace WasmSaw {
             }
         }
 
+        public class resizable_limitsEncoder : TypeEncoder<resizable_limits> {
+            KeyedStream flags, initials, maximums;
+
+            public resizable_limitsEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
+                flags = GetStream("rl_flag");
+                initials = GetStream("rl_initial");
+                maximums = GetStream("rl_maximum");
+            }
+
+            public override void Encode (ref resizable_limits value) {
+                flags.Write(value.flags);
+                Builder.Write(value.initial, initials);
+                // if (value.flags == 1)
+                Builder.Write(value.maximum, maximums);
+            }
+        }
+
+        public class table_typeEncoder : TypeEncoder<table_type> {
+            KeyedStream types;
+
+            public table_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
+                types = GetStream("element_type");
+            }
+
+            public override void Encode (ref table_type value) {
+                types.Write((byte)value.element_type);
+
+                Types.resizable_limits.Encode(ref value.limits);
+            }
+        }
+
+        public class global_typeEncoder : TypeEncoder<global_type> {
+            KeyedStream contentTypes, mutabilities;
+
+            public global_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
+                contentTypes = GetStream("content_type");
+                mutabilities = GetStream("mutability");
+            }
+
+            public override void Encode (ref global_type value) {
+                mutabilities.Write(value.mutability);
+                contentTypes.Write((byte)value.content_type);
+            }
+        }
+
+        public class memory_typeEncoder : TypeEncoder<memory_type> {
+            KeyedStream types;
+
+            public memory_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
+            }
+
+            public override void Encode (ref memory_type value) {
+                Types.resizable_limits.Encode(ref value.limits);
+            }
+        }
+
         public class import_entryEncoder : TypeEncoder<import_entry> {
-            KeyedStream modules, fields, kinds;
+            KeyedStream modules, fields, kinds, functionIndices;
 
             public import_entryEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 modules = GetStream("module");
                 fields = GetStream("field");
                 kinds = GetStream("external_kind");
+                functionIndices = GetStream("function_index");
             }
 
             public override void Encode (ref import_entry value) {
                 Builder.Write(value.module, modules);
                 Builder.Write(value.field, fields);
                 kinds.Write((byte)value.kind);
+
+                switch (value.kind) {
+                    case external_kind.Function:
+                        Builder.Write(value.type.Function, functionIndices);
+                        return;
+                    case external_kind.Table:
+                        Types.table_type.Encode(ref value.type.Table);
+                        break;
+                    case external_kind.Memory:
+                        Types.memory_type.Encode(ref value.type.Memory);
+                        break;
+                    case external_kind.Global:
+                        Types.global_type.Encode(ref value.type.Global);
+                        break;
+                    default:
+                        throw new Exception("unknown import kind");
+                }
             }
         }
 
