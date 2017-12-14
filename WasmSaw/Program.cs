@@ -23,7 +23,7 @@ namespace WasmSaw {
             using (var outputFile = File.OpenWrite(args[1])) {
                 if (IsThisWasm(inputFile))
                     WasmToMsaw(inputFile, outputFile, config);
-                else if (IsThisMsaw(inputFile))
+                else if (IsThisMsaw(inputFile, config))
                     MsawToWasm(inputFile, outputFile, config);
                 else
                     throw new Exception("Unrecognized input format");
@@ -36,20 +36,33 @@ namespace WasmSaw {
         }
         
         public static bool IsThisWasm (Stream input) {
+            input.Position = 0;
+
             using (var reader = new BinaryReader(input, Encoding.UTF8, true)) {
                 var mr = new ModuleReader(reader);
                 return mr.ReadHeader();
             }
         }
 
-        public static bool IsThisMsaw (Stream input) {
-            var buffer = new byte[AbstractModuleBuilder.Prologue.Length];
-            input.Read(buffer, 0, buffer.Length);
-            return buffer.SequenceEqual(AbstractModuleBuilder.Prologue);
+        public static bool IsThisMsaw (Stream input, Configuration configuration) {
+            input.Position = 0;
+
+            using (var reader = new BinaryReader(input, Encoding.UTF8, true)) {
+                var amr = new AbstractModuleReader(reader, configuration);
+                return amr.ReadPrologue();
+            }
         }
 
         public static void MsawToWasm (Stream input, Stream output, Configuration config) {
-            throw new NotImplementedException();
+            input.Position = 0;
+
+            using (var reader = new BinaryReader(input, Encoding.UTF8, true)) {
+                var amr = new AbstractModuleReader(reader, config);
+
+                Assert(amr.ReadHeader());
+
+                throw new Exception();
+            }
         }
 
         public static void WasmToMsaw (Stream input, Stream output, Configuration config) {

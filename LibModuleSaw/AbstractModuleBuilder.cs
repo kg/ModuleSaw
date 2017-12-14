@@ -140,15 +140,23 @@ namespace ModuleSaw {
                 writer.Write(BoundaryMarker1);
 
                 writer.Write(OrderedStreams.Count);
-                foreach (var s in OrderedStreams)
-                    s.WriteHeader(writer);
+
+                writer.Flush();
+
+                long startOfHeaders = writer.BaseStream.Position;
+                long headerSize = KeyedStream.HeaderSize;
+                long endOfHeaders = startOfHeaders + (OrderedStreams.Count * headerSize) + 4;
+
+                long dataOffset = endOfHeaders;
+
+                foreach (var s in OrderedStreams) {
+                    s.WriteHeader(writer, dataOffset);
+                    dataOffset += s.Length + 4;
+                }
 
                 writer.Write(BoundaryMarker2);
 
                 foreach (var s in OrderedStreams) {
-                    s.WriteHeader(writer);
-                    writer.Flush();
-
                     s.Flush();
                     s.Stream.Position = 0;
                     s.Stream.CopyTo(writer.BaseStream);
