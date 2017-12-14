@@ -66,7 +66,7 @@ namespace Wasm.Model {
         }
 
         private LanguageTypes ReadLanguageType () {
-            return (LanguageTypes)Reader.ReadLEBInt();
+            return (LanguageTypes)Reader.ReadByte();
         }
 
         public bool ReadFuncType (out func_type ft) {
