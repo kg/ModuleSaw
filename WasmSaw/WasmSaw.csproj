@@ -38,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Expression.cs" />
+    <Compile Include="ExpressionDecoder.cs" />
     <Compile Include="ExpressionReader.cs" />
     <Compile Include="ExpressionEncoder.cs" />
     <Compile Include="ModuleEncoder.cs" />

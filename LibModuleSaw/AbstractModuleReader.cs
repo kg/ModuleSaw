@@ -59,7 +59,7 @@ namespace ModuleSaw {
 
         public string SubFormat { get; private set; }
 
-        private AbstractModuleStreamReader
+        public AbstractModuleStreamReader
             IntStream, UIntStream,
             LongStream, ULongStream,
             SByteStream, ByteStream,

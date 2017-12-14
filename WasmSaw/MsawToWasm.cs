@@ -24,7 +24,6 @@ namespace WasmSaw {
             var sectionIds = amr.Open(amr.Streams["section_id"]);
             var sectionNames = amr.Open(amr.Streams["section_name"]);
             var sectionPayloadLengths = amr.Open(amr.Streams["section_payload_len"]);
-            var unknownSectionData = amr.Open(amr.Streams["unknown_section_data"]);
 
             var sectionCount = (uint)sectionIds.Length;
 
@@ -35,11 +34,8 @@ namespace WasmSaw {
                     name = sectionNames.ReadString();
                 var payload_len = sectionPayloadLengths.ReadUInt32();
 
-                Console.WriteLine("{0} {1}", id, payload_len);
-
                 writer.Write((sbyte)id);
                 writer.WriteLEB(payload_len);
-                return;
 
                 var actualPayloadSize = payload_len;
 
@@ -57,6 +53,7 @@ namespace WasmSaw {
 
                 if (((sbyte)id <= 0) || ((sbyte)id >= (sbyte)SectionTypes.Unknown)) {
                     // FIXME: Use CopyTo?
+                    var unknownSectionData = amr.Open(amr.Streams["unknown_section_data"]);
                     writer.Write(unknownSectionData.ReadBytes((int)actualPayloadSize));
                 } else {
                     DecodeSectionBody(amr, writer, (SectionTypes)id, actualPayloadSize);
@@ -80,6 +77,14 @@ namespace WasmSaw {
                     DecodeImportSection(amr, writer, td);
                     break;
 
+                case SectionTypes.Function:
+                    DecodeFunctionSection(amr, writer, td);
+                    break;
+
+                case SectionTypes.Global:
+                    DecodeGlobalSection(amr, writer, td);
+                    break;
+
                 default:
                     Console.WriteLine("Not implemented: {0}", id);
 
@@ -87,9 +92,6 @@ namespace WasmSaw {
                         writer.Write((byte)id);
                     break;
             }
-
-
-            // FIXME
         }
 
         private static void DecodeTypeSection (
@@ -161,6 +163,29 @@ namespace WasmSaw {
                         DecodeGlobalType(writer, item.type.Global);
                         break;
                 }
+            }
+        }
+
+        private static void DecodeFunctionSection (
+            AbstractModuleReader amr, BinaryWriter writer, TypeDecoders td
+        ) {
+            var count = amr.ReadArrayLength();
+            writer.WriteLEB(count);
+
+            var indices = amr.Open(amr.Streams["function_index"]);
+
+            for (uint i = 0; i < count; i++)
+                writer.WriteLEB(indices.ReadUInt32());
+        }
+
+        private static void DecodeGlobalSection (
+            AbstractModuleReader amr, BinaryWriter writer, TypeDecoders td
+        ) {
+            var count = amr.ReadArrayLength();
+            writer.WriteLEB(count);
+
+            for (uint i = 0; i < count; i++) {
+                var item = td.global_variable();
             }
         }
     }

@@ -3,3 +3,7 @@
 bin/
 obj/
 *.user
+*.msaw
+*.wasm
+*.gz
+*.bro

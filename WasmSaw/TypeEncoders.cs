@@ -202,8 +202,7 @@ namespace WasmSaw {
             }
 
             public override void Encode (ref global_variable value) {
-                types.Write((byte)value.type.content_type);
-                types.Write(value.type.mutability);
+                Types.global_type.Encode(ref value.type);
                 Write(ref value.init);
             }
         }

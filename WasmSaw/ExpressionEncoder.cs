@@ -64,7 +64,7 @@ namespace WasmSaw {
                     Builder.Write(e.Body.U.u32, s);
                     break;
                 case ExpressionBody.Types.u1:
-                    Builder.Write((byte)e.Body.U.u32, s);
+                    (s ?? Builder.ByteStream).Write((byte)e.Body.U.u32);
                     break;
                 case ExpressionBody.Types.i64:
                     Builder.Write(e.Body.U.i64, s);
@@ -73,10 +73,10 @@ namespace WasmSaw {
                     Builder.Write(e.Body.U.i32, s);
                     break;
                 case ExpressionBody.Types.f64:
-                    Builder.DoubleStream.Write(e.Body.U.f64);
+                    (s ?? Builder.DoubleStream).Write(e.Body.U.f64);
                     break;
                 case ExpressionBody.Types.f32:
-                    Builder.SingleStream.Write(e.Body.U.f32);
+                    (s ?? Builder.SingleStream).Write(e.Body.U.f32);
                     break;
                 case ExpressionBody.Types.memory:
                     if (s == null)
@@ -85,7 +85,7 @@ namespace WasmSaw {
                     Builder.Write(e.Body.U.memory.offset, s);
                     break;
                 case ExpressionBody.Types.type:
-                    BlockTypes.Write((byte)e.Body.U.type);
+                    (s ?? BlockTypes).Write((byte)e.Body.U.type);
                     break;
                 case ExpressionBody.Types.br_table:
                     var bt = e.Body.br_table;

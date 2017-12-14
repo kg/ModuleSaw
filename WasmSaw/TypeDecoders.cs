@@ -9,11 +9,14 @@ using Wasm.Model;
 namespace WasmSaw {
     public class TypeDecoders {
         public readonly AbstractModuleReader Reader;
+        public readonly ExpressionDecoder Expression;
+
         private readonly Dictionary<string, AbstractModuleStreamReader> StreamCache =
             new Dictionary<string, AbstractModuleStreamReader>(StringComparer.Ordinal);
 
         public TypeDecoders (AbstractModuleReader reader) {
             Reader = reader;
+            Expression = new ExpressionDecoder(this);
         }
 
         private AbstractModuleStreamReader GetStream (string key) {
@@ -100,6 +103,16 @@ namespace WasmSaw {
             return new memory_type {
                 limits = resizable_limits()
             };
+        }
+
+        public global_variable global_variable () {
+            var result = new global_variable {
+                type = global_type()
+            };
+            if (Expression.Read(out result.init))
+                return result;
+            else
+                throw new Exception("Decode failed for global variable init " + result.init.Opcode);
         }
     }
 }

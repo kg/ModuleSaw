@@ -42,8 +42,6 @@ namespace WasmSaw {
 
             SectionHeader sh;
             while (reader.ReadSectionHeader(out sh)) {
-                Console.WriteLine("{0} {1}", sh.id, sh.payload_len);
-
                 t.SectionHeader.Encode(ref sh);
 
                 switch (sh.id) {
