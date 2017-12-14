@@ -257,6 +257,7 @@ namespace WasmSaw {
                     locals.Write((byte)le.type);
                 }
 
+                // HACK: Decode the source function body and encode it into the modulebuilder on the fly
                 using (var subStream = new StreamWindow(value.Stream, value.StreamOffset, value.StreamEnd - value.StreamOffset)) {
                     var reader = new ExpressionReader(new BinaryReader(subStream));
 

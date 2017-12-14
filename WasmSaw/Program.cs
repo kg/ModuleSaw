@@ -12,12 +12,12 @@ using Wasm.Model;
 namespace WasmSaw {
     static class Program {
         public static void Main (string[] args) {
+            VarintExtensions.SelfTest();
+
             if (args.Length != 2)
                 throw new Exception("Expected: WasmSaw input.wasm output.msaw\r\nor:       WasmSaw input.msaw output.wasm");
 
             Console.WriteLine("{0} ...", args[0]);
-
-            // SelfTest();
 
             var config = CreateConfiguration();
 
@@ -45,55 +45,6 @@ namespace WasmSaw {
             };
 
             return result;
-        }
-
-        private static ulong SelfTestSingle (ulong l) {
-            var ms = new MemoryStream();
-            var bw = new BinaryWriter(ms, Encoding.UTF8, true);
-            bw.WriteLEB(l);
-            bw.Dispose();
-
-            ms.Position = 0;
-            var br = new BinaryReader(ms);
-            var read = br.ReadLEBUInt();
-            return read.Value;
-        }
-
-        private static long SelfTestSingle (long l) {
-            var ms = new MemoryStream();
-            var bw = new BinaryWriter(ms, Encoding.UTF8, true);
-            bw.WriteLEB(l);
-            bw.Dispose();
-
-            ms.Position = 0;
-            var br = new BinaryReader(ms);
-            var read = br.ReadLEBInt();
-            return read.Value;
-        }
-
-        public static void SelfTest () {
-            var values = new long[] {
-                9401, 12546, 113794, 51, 15658, 376331, 23891164, 6249699, 8841692, 0, 1, -1, 127, 128, -127, -128
-            };
-            bool failed = false;
-
-            foreach (var l in values) {
-                var a = SelfTestSingle(l);
-                var b = SelfTestSingle((ulong)l);
-
-                if (a != l) {
-                    Console.WriteLine("Expected {0} got {1}", l, a);
-                    failed = true;
-                }
-                
-                if (b != (ulong)l) {
-                    Console.WriteLine("Expected {0} got {1}", (ulong)l, b);
-                    failed = true;
-                }
-            }
-
-            if (failed)
-                throw new Exception();
         }
         
         public static bool IsThisWasm (Stream input) {

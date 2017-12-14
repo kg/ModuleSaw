@@ -386,7 +386,7 @@ namespace WasmSaw {
         private bool DecodeChildren (ref Expression parent) {
             var initialDepth = Depth;
             parent.Body.Type |= ExpressionBody.Types.children;
-            parent.Body.children = new List<Expression>();
+            parent.Body.children = new List<Expression>(16);
 
             while (true) {
                 Expression c;

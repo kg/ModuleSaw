@@ -9,18 +9,6 @@ using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public static class VarintExtensions {
-        [StructLayout(LayoutKind.Explicit)]
-        private struct U {
-            [FieldOffset(0)]
-            public UInt64 u64;
-            [FieldOffset(0)]
-            public Int64 i64;
-            [FieldOffset(0)]
-            public UInt32 u32;
-            [FieldOffset(0)]
-            public Int32 i32;
-        }
-
         public static void WriteLEB (this BinaryWriter writer, ulong value) {
             do {
                 var b = (byte)(value & 0x7Ful);
@@ -61,54 +49,58 @@ namespace ModuleSaw {
             WriteLEB(writer, (ulong)value);
         }
 
+        // HACK: Not thread-safe
+        private static byte[] LEBBuffer = new byte[10];
+
         public static ulong? ReadLEBUInt (this BinaryReader reader) {
             var br = reader.BaseStream;
-            var l = br.Length;
+            var count = br.Read(LEBBuffer, 0, 10);
+            if (count == 0)
+                return null;
 
             ulong result = 0;
             int shift = 0;
-            while (true) {
-                if (br.Position == l)
-                    return null;
-
-                var b = reader.ReadByte();
+            for (int i = 0; i < count; i++) {
+                var b = LEBBuffer[i];
                 var shifted = (ulong)(b & 0x7F) << shift;
                 result |= shifted;
 
-                if ((b & 0x80) == 0)
-                    break;
+                if ((b & 0x80) == 0) {
+                    br.Position -= (count - i - 1);
+                    return result;
+                }
 
                 shift += 7;
             }
 
-            return result;
+            return null;
         }
 
         public static long? ReadLEBInt (this BinaryReader reader) {
             var br = reader.BaseStream;
-            var l = br.Length;
+            var count = br.Read(LEBBuffer, 0, 10);
+            if (count == 0)
+                return null;
 
             long result = 0;
             int shift = 0;
-            byte b;
+            byte b = 0;
 
-            while (true) {
-                if (br.Position >= l)
-                    return null;
-
-                b = reader.ReadByte();
+            for (int i = 0; i < count; i++) {
+                b = LEBBuffer[i];
                 var shifted = (long)(b & 0x7F) << shift;
                 result |= shifted;
                 shift += 7;
 
-                if ((b & 0x80) == 0)
-                    break;
+                if ((b & 0x80) == 0) {
+                    br.Position -= (count - i - 1);
+                    if ((b & 0x40) != 0)
+                        result |= (((long)-1) << shift);
+                    return result;
+                }
             }
 
-            if ((b & 0x40) != 0)
-                result |= (((long)-1) << shift);
-
-            return result;
+            return null;
         }
 
         public static string ReadPString (this BinaryReader reader) {
@@ -121,6 +113,66 @@ namespace ModuleSaw {
             var bytes = Encoding.UTF8.GetBytes(text);
             writer.WriteLEB((uint)bytes.Length);
             writer.Write(bytes);
+        }
+
+        private static ulong SelfTestSingle (ulong l) {
+            var ms = new MemoryStream();
+            var bw = new BinaryWriter(ms, Encoding.UTF8, true);
+            bw.WriteLEB(l);
+            bw.Dispose();
+
+            ms.Position = 0;
+            var br = new BinaryReader(ms);
+            var read = br.ReadLEBUInt();
+            return read.Value;
+        }
+
+        private static long SelfTestSingle (long l) {
+            var ms = new MemoryStream();
+            var bw = new BinaryWriter(ms, Encoding.UTF8, true);
+            bw.WriteLEB(l);
+            bw.Dispose();
+
+            ms.Position = 0;
+            var br = new BinaryReader(ms);
+            var read = br.ReadLEBInt();
+            return read.Value;
+        }
+
+        public static void SelfTest () {
+            var values = new long[] {
+                9401, 12546, 113794, 51, 15658, 376331,
+                23891164, 6249699, 8841692, 0, 1, -1,
+                127, 128, -127, -128
+            };
+            bool failed = false;
+
+            var ms = new MemoryStream();
+            using (var bw = new BinaryWriter(ms, Encoding.UTF8, true))
+            foreach (var l in values) {
+                bw.WriteLEB(l);
+                bw.WriteLEB((ulong)l);
+            }
+
+            ms.Position = 0;
+            using (var br = new BinaryReader(ms))
+            foreach (var l in values) {
+                var a = br.ReadLEBInt();
+                var b = br.ReadLEBUInt();
+
+                if (a != l) {
+                    Console.WriteLine("Expected {0} got {1}", l, a);
+                    failed = true;
+                }
+
+                if (b != (ulong)l) {
+                    Console.WriteLine("Expected {0} got {1}", (ulong)l, b);
+                    failed = true;
+                }
+            }
+
+            if (failed)
+                throw new Exception();
         }
     }
 }

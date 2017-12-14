@@ -173,9 +173,7 @@ namespace Wasm.Model {
         public bool ReadGlobalSection (out GlobalSection gs) {
             gs.globals = ReadList((i) => {
                 var result = default(global_variable);
-                // FIXME
                 ReadGlobalType(out result.type);
-                // FIXME
                 ExpressionReader.TryReadInitExpr(out result.init);
                 return result;
             });

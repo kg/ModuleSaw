@@ -12,6 +12,7 @@ namespace ModuleSaw {
         public readonly long OriginalPosition;
 
         private readonly long Offset, _Length;
+        private long _Position;
 
         public StreamWindow (Stream baseStream, long offset, long length) {
             BaseStream = baseStream;
@@ -31,16 +32,22 @@ namespace ModuleSaw {
 
         public override long Length => _Length;
 
-        public override long Position { get; set; }
+        public override long Position {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _Position;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _Position = value;
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override void Flush () {
             BaseStream.Flush();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int Read (byte[] buffer, int offset, int count) {
-            if (BaseStream.Position != Position)
-                BaseStream.Position = Position + Offset;
+            if (BaseStream.Position != _Position)
+                BaseStream.Position = _Position + Offset;
 
             var actualCount = (int)Math.Min(count, (_Length - Position));
             if (actualCount <= 0)

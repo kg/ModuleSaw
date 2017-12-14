@@ -8,22 +8,19 @@ using ModuleSaw;
 
 namespace Wasm.Model {
     public class ExpressionReader {
-        public BinaryReader Reader;
+        public readonly BinaryReader Reader;
         public uint NumRead { get; private set; }
+
+        private readonly Stream BaseStream;
+        private readonly long BaseStreamLength;
 
         public ExpressionReader (BinaryReader reader) {
             Reader = reader;
+            BaseStream = reader.BaseStream;
+            BaseStreamLength = BaseStream.Length;
         }
 
-        public Opcodes? ReadOpcode () {
-            // FIXME: Sanity checking to ensure we read a signed int7
-            if (Reader.BaseStream.Position == Reader.BaseStream.Length)
-                return null;
-
-            return (Opcodes)Reader.ReadByte();
-        }
-
-        public bool TryReadInitExpr (out Expression result, Opcodes? expected = null) {
+        public bool TryReadInitExpr (out Expression result) {
             if (!TryReadExpression(out result))
                 return false;
 
@@ -31,9 +28,6 @@ namespace Wasm.Model {
                 // HACK
                 throw new Exception("Failed to read body of " + result.Opcode);
             }
-
-            if (expected.HasValue && result.Opcode != expected)
-                return false;
 
             switch (result.Opcode) {
                 case Opcodes.f32_const:
@@ -52,11 +46,11 @@ namespace Wasm.Model {
 
         public bool TryReadExpression (out Expression result) {
             result = default(Expression);
-            var opcode = ReadOpcode();
-            if (!opcode.HasValue)
+
+            if (BaseStream.Position >= BaseStreamLength)
                 return false;
 
-            result.Opcode = opcode.Value;
+            result.Opcode = (Opcodes)Reader.ReadByte();
             result.State = ExpressionState.BodyNotRead;
 
             NumRead += 1;
@@ -65,7 +59,8 @@ namespace Wasm.Model {
         }
 
         private bool GatherChildNodesUntil (ref ExpressionBody body, Predicate<Expression> pred) {
-            body.children = new List<Expression>();
+            // Reduce number of allocations
+            body.children = new List<Expression>(16);
             body.Type |= ExpressionBody.Types.children;
 
             var initialDepth = Depth;

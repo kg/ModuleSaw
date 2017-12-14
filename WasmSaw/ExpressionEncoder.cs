@@ -101,8 +101,8 @@ namespace WasmSaw {
             }
 
             if ((e.Body.Type & ExpressionBody.Types.children) != 0) {
-                foreach (var expr in e.Body.children)
-                    Write(expr);
+                for (int i = 0, l = e.Body.children.Count; i < l; i++)
+                    Write(e.Body.children[i]);
             }
         }
 

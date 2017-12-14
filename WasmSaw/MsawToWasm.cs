@@ -207,15 +207,16 @@ namespace WasmSaw {
             for (uint i = 0; i < count; i++) {
                 var item = td.global_variable();
                 EmitGlobalType(writer, item.type);
-                EmitExpression(writer, ref item.init);
+                EmitInitExpression(writer, ref item.init);
             }
         }
 
-        private static uint EmitExpression (
+        private static uint EmitInitExpression (
             BinaryWriter writer, ref Expression e
         ) {
             uint _2 = 0;
             EmitExpression(writer, ref e, ref _2);
+            writer.Write((byte)Opcodes.end);
             return _2;
         }
         
@@ -303,7 +304,7 @@ namespace WasmSaw {
             for (uint i = 0; i < count; i++) {
                 var item = td.elem_segment();
                 writer.WriteLEB(item.index);
-                EmitExpression(writer, ref item.offset);
+                EmitInitExpression(writer, ref item.offset);
                 writer.WriteLEB((uint)item.elems.Length);
                 foreach (var elem in item.elems)
                     writer.WriteLEB(elem);
@@ -318,16 +319,24 @@ namespace WasmSaw {
             var count = amr.ReadArrayLength();
             writer.WriteLEB(count);
 
+            const bool checkSizes = false;
+            long initialPosition;
+
             for (uint i = 0; i < count; i++) {
                 var item = td.function_body();
                 writer.WriteLEB(item.body_size);
+
+                if (checkSizes) {
+                    writer.Flush();
+                    initialPosition = writer.BaseStream.Position;
+                }
+
                 writer.WriteLEB((uint)item.locals.Length);
                 foreach (var l in item.locals) {
                     writer.WriteLEB(l.count);
                     writer.Write((byte)l.type);
                 }
 
-                // func end is included in the count
                 var expressionCount = countStream.ReadUInt32();
                 uint numEmitted = 0;
 
@@ -341,6 +350,13 @@ namespace WasmSaw {
 
                 if (numEmitted > expressionCount)
                     throw new Exception("Decoded too many expressions");
+
+                if (checkSizes) {
+                    writer.Flush();
+                    var bytesWritten = writer.BaseStream.Position - initialPosition;
+                    if (bytesWritten != item.body_size)
+                        Console.WriteLine("Expected to write {0}b but wrote {1}b", item.body_size, bytesWritten);
+                }
             }
         }
 
@@ -355,7 +371,7 @@ namespace WasmSaw {
             for (uint i = 0; i < count; i++) {
                 var item = td.data_segment();
                 writer.WriteLEB(item.index);
-                EmitExpression(writer, ref item.offset);
+                EmitInitExpression(writer, ref item.offset);
                 writer.WriteLEB(item.size);
 
                 writer.Write(dataStream.ReadBytes((int)item.size));
