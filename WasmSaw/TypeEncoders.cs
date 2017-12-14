@@ -78,19 +78,17 @@ namespace WasmSaw {
         }
 
         public class func_typeEncoder : TypeEncoder<func_type> {
-            KeyedStream forms, types;
+            KeyedStream types;
 
             public func_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
-                forms = GetStream("func_type.form");
                 types = GetStream("types");
             }
 
             public override void Encode (ref func_type value) {
-                forms.Write(value.form);
                 Builder.WriteArrayLength(value.param_types);
                 foreach (var pt in value.param_types)
-                    types.Write((sbyte)pt);
-                types.Write((sbyte)value.return_type);
+                    types.Write((byte)pt);
+                types.Write((byte)value.return_type);
             }
         }
 
@@ -167,7 +165,7 @@ namespace WasmSaw {
                 Builder.WriteArrayLength(value.locals);
                 foreach (var le in value.locals) {
                     Builder.Write(le.count, locals);
-                    locals.Write((sbyte)le.type);
+                    locals.Write((byte)le.type);
                 }
 
                 // FIXME

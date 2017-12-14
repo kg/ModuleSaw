@@ -70,8 +70,13 @@ namespace Wasm.Model {
         }
 
         public bool ReadFuncType (out func_type ft) {
+            bool valid = true;
+
             ft = default(func_type);
-            ft.form = (sbyte)Reader.ReadLEBInt();
+            var form = Reader.ReadByte();
+            if (form != 0x60)
+                valid = false;
+
             ft.param_types = ReadList((i) => ReadLanguageType());
             var return_count = Reader.ReadLEBUInt();
             if (return_count == 1)
@@ -79,7 +84,7 @@ namespace Wasm.Model {
             else if (return_count > 1)
                 throw new Exception("Multiple return types not implemented");
             // FIXME
-            return true;
+            return valid;
         }
     
         public bool ReadTypeSection (out TypeSection ts) {

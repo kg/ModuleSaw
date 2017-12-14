@@ -156,6 +156,14 @@ namespace ModuleSaw {
         public uint ReadArrayLength () {
             return ArrayLengthStream.ReadUInt32();
         }
+
+        public T[] ReadArray<T> (Func<T> readElement) {
+            var length = ReadArrayLength();
+            var result = new T[length];
+            for (uint i = 0; i < length; i++)
+                result[i] = readElement();
+            return result;
+        }
     }
 
     public class AbstractModuleStreamReader : BinaryReader {

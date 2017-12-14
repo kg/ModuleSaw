@@ -85,7 +85,7 @@ namespace WasmSaw {
                     Builder.Write(e.Body.U.memory.offset, s);
                     break;
                 case ExpressionBody.Types.type:
-                    BlockTypes.Write((sbyte)e.Body.U.type);
+                    BlockTypes.Write((byte)e.Body.U.type);
                     break;
                 case ExpressionBody.Types.br_table:
                     var bt = e.Body.br_table;

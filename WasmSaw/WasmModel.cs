@@ -24,23 +24,23 @@ namespace Wasm.Model {
         Unknown
     }
 
-    public enum external_kind : sbyte {
+    public enum external_kind : byte {
         Function = 0,
         Table,
         Memory,
         Global
     }
 
-    public enum LanguageTypes : sbyte {
+    public enum LanguageTypes : byte {
         none = 0,
 
-        i32 = -0x01,
-        i64 = -0x02,
-        f32 = -0x03,
-        f64 = -0x04,
-        anyfunc = -0x10,
-        func = -0x20,
-        empty_block = -0x40
+        i32 = 0x7f,
+        i64 = 0x7e,
+        f32 = 0x7d,
+        f64 = 0x7c,
+        anyfunc = 0x70,
+        func = 0x60,
+        empty_block = 0x40
     }
 
     public struct SectionHeader {
@@ -155,7 +155,8 @@ namespace Wasm.Model {
     }
 
     public struct func_type {
-        public sbyte form;
+        // Always -0x20?
+        // public sbyte form;
         public LanguageTypes[] param_types;
         public LanguageTypes return_type;
     }

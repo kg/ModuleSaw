@@ -17,6 +17,8 @@ namespace WasmSaw {
 
             Console.Write("{0} ... ", args[0]);
 
+            // SelfTest();
+
             var config = CreateConfiguration();
 
             using (var inputFile = File.OpenRead(args[0]))
@@ -35,6 +37,56 @@ namespace WasmSaw {
 
             if (Debugger.IsAttached)
                 Console.ReadLine();
+        }
+
+        public static void SelfTest () {
+            var values = new long[] {
+                0, 1, 2, 126, 127, 254, 255, 256,
+                65535, 65536,
+                102400,
+                102400000,
+                -1,
+                -127,
+                -128,
+                -255,
+                -256,
+                -65536
+            };
+
+            var ms = new MemoryStream();
+            var bw = new BinaryWriter(ms);
+            foreach (var l in values) {
+                bw.WriteLEB(l);
+                bw.WriteLEB(-l);
+                bw.WriteLEB((ulong)l);
+            }
+
+            bool failed = false;
+
+            bw.Flush();
+            ms.Position = 0;
+            var br = new BinaryReader(ms);
+            foreach (var l in values) {
+                var a = br.ReadLEBInt();
+                var b = br.ReadLEBInt();
+                var c = br.ReadLEBUInt();
+
+                if (a != l) {
+                    Console.WriteLine("Expected {0} got {1}", l, a);
+                    failed = true;
+                }
+                if (b != -l) {
+                    Console.WriteLine("Expected {0} got {1}", -l, b);
+                    failed = true;
+                }
+                if (c != (ulong)l) {
+                    Console.WriteLine("Expected {0}u got {1}", (ulong)l, c);
+                    failed = true;
+                }
+            }
+
+            if (failed)
+                throw new Exception();
         }
         
         public static bool IsThisWasm (Stream input) {
@@ -78,7 +130,7 @@ namespace WasmSaw {
 
         private static Configuration CreateConfiguration () {
             var result = new Configuration {
-                Varints = true
+                Varints = false
             };
 
             return result;
@@ -282,17 +334,34 @@ namespace WasmSaw {
             SectionTypes id, uint payload_len
         ) {
             var td = new TypeDecoders(amr);
+            uint count;
 
             switch (id) {
                 case SectionTypes.Type:
+                    count = amr.ReadArrayLength();
+                    for (uint i = 0; i < count; i++) {
+                        var item = td.func_type();
+                        writer.Write((byte)0x60);
+
+                        writer.WriteLEB((uint)item.param_types.Length);
+                        foreach (var pt in item.param_types)
+                            writer.Write((byte)pt);
+
+                        writer.Write(item.return_type != 0);
+                        if (item.return_type != 0)
+                            writer.Write((byte)item.return_type);
+                    }
+
                     break;
 
                 default:
-                    throw new NotImplementedException(id.ToString());
+                    Console.WriteLine("Not implemented: {0}", id);
+
+                    for (int i = 0; i < payload_len; i++)
+                        writer.Write((byte)id);
+                    break;
             }
 
-            for (int i = 0; i < payload_len; i++)
-                writer.Write((byte)id);
 
             // FIXME
         }

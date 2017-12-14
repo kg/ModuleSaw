@@ -25,10 +25,13 @@ namespace WasmSaw {
         }
 
         public func_type func_type () {
-            return new func_type {
-                form = GetStream("func_type.form").ReadSByte(),
-            };
             var types = GetStream("types");
+
+            return new func_type {
+                // form = GetStream("func_type.form").ReadByte(),
+                param_types = Reader.ReadArray(() => (LanguageTypes)types.ReadByte()),
+                return_type = (LanguageTypes)types.ReadByte()
+            };
         }
     }
 }

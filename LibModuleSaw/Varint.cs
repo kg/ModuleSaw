@@ -3,33 +3,54 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public static class VarintExtensions {
-        public static void WriteLEB (this BinaryWriter writer, ulong value) {
-            do {
-                var b = value & 0x7F;
-                value >>= 7;
-                if (value != 0)
-                    b |= 0x80;
+        [StructLayout(LayoutKind.Explicit)]
+        private struct U {
+            [FieldOffset(0)]
+            public UInt64 u64;
+            [FieldOffset(0)]
+            public Int64 i64;
+            [FieldOffset(0)]
+            public UInt32 u32;
+            [FieldOffset(0)]
+            public Int32 i32;
+        }
 
-                writer.Write((byte)b);
-            } while (value != 0);
+        public static void WriteLEB (this BinaryWriter writer, ulong value) {
+            var _value = value;
+
+            do {
+                var b = (byte)(value & 0x7F);
+                value >>= 7;
+
+                if (value == 0) {
+                    writer.Write(b);
+                    break;
+                } else {
+                    b |= 0x80;
+                    writer.Write(b);
+                }
+            } while (true);
         }
 
         public static void WriteLEB (this BinaryWriter writer, long value) {
+            bool negative = value < 0;
+
             do {
-                var b = value & 0x7F;
+                var b = (byte)(value & 0x7F);
                 value >>= 7;
 
-                var signBit = (b & 0x40) != 0;
+                bool flag = (b & 0x40) != 0;
 
-                if (
-                    ((value == 0) && !signBit) ||
-                    ((value == -1) && signBit)
-                ) {
+                var abort = (negative && (value == -1) && flag) ||
+                    (!negative && (value == 0) && !flag);
+
+                if (abort) {
                     writer.Write((byte)b);
                     break;
                 } else {

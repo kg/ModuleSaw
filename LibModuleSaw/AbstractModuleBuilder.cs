@@ -133,7 +133,10 @@ namespace ModuleSaw {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteArrayLength (Array array) {
-            Write((uint)array.Length, ArrayLengthStream);
+            if (array == null)
+                Write((uint)0, ArrayLengthStream);
+            else
+                Write((uint)array.Length, ArrayLengthStream);
         }
 
         public void SaveTo (Stream output, string subFormat) {
