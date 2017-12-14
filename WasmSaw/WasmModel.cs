@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -100,8 +101,9 @@ namespace Wasm.Model {
         public uint body_size;
         public local_entry[] locals;
 
-        // Position inside stream
-        public long body_offset, body_end;
+        // HACK: Information on the stream it was read from
+        public Stream Stream;
+        public long StreamOffset, StreamEnd;
     }
 
     public struct local_entry {

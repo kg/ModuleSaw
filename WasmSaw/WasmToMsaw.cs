@@ -94,15 +94,7 @@ namespace WasmSaw {
                     case SectionTypes.Code:
                         CodeSection cs;
                         Program.Assert(reader.ReadCodeSection(out cs));
-
-                        var functionStream = amb.GetStream("function_bodies");
-                        functionStream.Flush();
-
                         t.function_body.Encode(cs.bodies);
-
-                        foreach (var body in cs.bodies)
-                            EncodeFunctionBody(encoder, functionStream, wasm.BaseStream, body);
-
                         break;
 
                     case SectionTypes.Data:
@@ -135,26 +127,6 @@ namespace WasmSaw {
                     using (var subStream = new StreamWindow(wasm.BaseStream, ent.data_offset, ent.size))
                         subStream.CopyTo(dataStream.BaseStream);
                 }
-            }
-        }
-
-        private static void EncodeFunctionBody (ModuleEncoder encoder, KeyedStream functionStream, Stream baseStream, function_body body) {
-            using (var subStream = new StreamWindow(baseStream, body.body_offset, body.body_size)) {
-                var reader = new ExpressionReader(new BinaryReader(subStream));
-                var ee = encoder.ExpressionEncoder;
-                Expression e;
-
-                while (reader.TryReadExpression(out e)) {
-                    if (!reader.TryReadExpressionBody(ref e))
-                        throw new Exception("Failed to read body of " + e.Opcode);
-
-                    if (e.Opcode == Opcodes.end)
-                        return;
-
-                    ee.Write(ref e);
-                }
-
-                throw new Exception("Found no end opcode in function body");
             }
         }
     }

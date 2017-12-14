@@ -9,6 +9,7 @@ using ModuleSaw;
 namespace Wasm.Model {
     public class ExpressionReader {
         public BinaryReader Reader;
+        public uint NumRead { get; private set; }
 
         public ExpressionReader (BinaryReader reader) {
             Reader = reader;
@@ -29,7 +30,6 @@ namespace Wasm.Model {
             if (!TryReadExpressionBody(ref result)) {
                 // HACK
                 throw new Exception("Failed to read body of " + result.Opcode);
-                return false;
             }
 
             if (expected.HasValue && result.Opcode != expected)
@@ -44,10 +44,7 @@ namespace Wasm.Model {
                     break;
 
                 default:
-                    Console.WriteLine("Unsupported init_expr opcode: {0}", result.Opcode);
-                    // HACK: Skip the end opcode
-                    Reader.ReadByte();
-                    return false;
+                    throw new Exception("Unsupported init_expr opcode:" + result.Opcode);
             }
 
             return (Reader.ReadByte() == (byte)Opcodes.end);
@@ -63,12 +60,16 @@ namespace Wasm.Model {
             result.State = ExpressionState.BodyNotRead;
 
             Depth += 1;
+            NumRead += 1;
 
             return true;
         }
 
         private bool GatherChildNodesUntil (ref ExpressionBody body, Predicate<Expression> pred) {
             var result = new List<Expression>();
+            body.Type |= ExpressionBody.Types.children;
+
+            var initialDepth = Depth;
 
             while (true) {
                 Expression e;
@@ -77,13 +78,12 @@ namespace Wasm.Model {
                 if (!TryReadExpressionBody(ref e))
                     return false;
 
-                if (pred(e)) {
+                result.Add(e);
+
+                if (pred(e) && (Depth == initialDepth)) {
                     body.children = result.Count > 0 ? result : null;
-                    body.Type = body.Type | ExpressionBody.Types.children;
                     return true;
                 }
-
-                result.Add(e);
             }
         }
 

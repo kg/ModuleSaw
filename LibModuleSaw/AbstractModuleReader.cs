@@ -57,6 +57,9 @@ namespace ModuleSaw {
 
         public readonly StreamList Streams = new StreamList();
 
+        private readonly Dictionary<string, AbstractModuleStreamReader> StreamCache =
+            new Dictionary<string, AbstractModuleStreamReader>(StringComparer.Ordinal);
+
         public string SubFormat { get; private set; }
 
         public AbstractModuleStreamReader
@@ -79,6 +82,14 @@ namespace ModuleSaw {
         }
 
         public AbstractModuleStreamReader Open (StreamHeader header) {
+            AbstractModuleStreamReader result;
+            if (!StreamCache.TryGetValue(header.Key, out result))
+                StreamCache[header.Key] = result = OpenNew(header);
+
+            return result;
+        }
+
+        public AbstractModuleStreamReader OpenNew (StreamHeader header) {
             var stream = new MemoryStream(Bytes, (int)header.Offset, (int)header.Length, false);
             return new AbstractModuleStreamReader(Configuration, stream);
         }

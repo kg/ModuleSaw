@@ -225,10 +225,11 @@ namespace Wasm.Model {
                 var codeEnd = bodyOffset + bodySize;
 
                 var result = new function_body {
+                    Stream = Reader.BaseStream,
                     body_size = (uint)bodySize,
                     locals = localEntries,
-                    body_offset = codeOffset,
-                    body_end = codeEnd
+                    StreamOffset = codeOffset,
+                    StreamEnd = codeEnd
                 };
 
                 if (itemCallback != null)

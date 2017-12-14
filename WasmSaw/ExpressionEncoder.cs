@@ -110,7 +110,6 @@ namespace WasmSaw {
                     Builder.Write((uint)0, BlockSizes);
                 }
             }
-            // FIXME
         }
 
         public void Write (Expression e) {

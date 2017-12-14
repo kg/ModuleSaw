@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -240,21 +241,45 @@ namespace WasmSaw {
         }
 
         public class function_bodyEncoder : TypeEncoder<function_body> {
-            private KeyedStream locals;
+            private KeyedStream locals, functionExpressionCounts;
 
             public function_bodyEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 locals = GetStream("local_entry");
+                functionExpressionCounts = GetStream("function_expression_count");
             }
 
             public override void Encode (ref function_body value) {
+                Builder.Write(value.body_size);
+
                 Builder.WriteArrayLength(value.locals);
                 foreach (var le in value.locals) {
                     Builder.Write(le.count, locals);
                     locals.Write((byte)le.type);
                 }
 
-                // FIXME
-                Builder.Write(value.body_size);
+                using (var subStream = new StreamWindow(value.Stream, value.StreamOffset, value.StreamEnd - value.StreamOffset)) {
+                    var reader = new ExpressionReader(new BinaryReader(subStream));
+
+                    Expression e;
+                    Opcodes previous = Opcodes.end;
+
+                    while (reader.TryReadExpression(out e)) {
+                        if (!reader.TryReadExpressionBody(ref e))
+                            throw new Exception("Failed to read body of " + e.Opcode);
+
+                        Write(ref e);
+                        previous = e.Opcode;
+                    }
+
+                    if (subStream.Position != subStream.Length)
+                        throw new Exception("Stopped reading opcodes before end of function body");
+
+                    if (previous == Opcodes.end) {
+                        Builder.Write(reader.NumRead, functionExpressionCounts);
+                        return;
+                    } else
+                        throw new Exception("Found no end opcode in function body");
+                }
             }
         }
 
@@ -264,10 +289,9 @@ namespace WasmSaw {
 
             public override void Encode (ref data_segment value) {
                 Builder.Write(value.index);
-                Write(ref value.offset);
-
-                // FIXME
                 Builder.Write(value.size);
+
+                Write(ref value.offset);
             }
         }
     }
