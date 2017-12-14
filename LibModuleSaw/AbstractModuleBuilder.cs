@@ -47,6 +47,21 @@ namespace ModuleSaw {
             ArrayLengthStream = GetStream("arrayLength");
         }
 
+        public void MoveStreamToBack (string key) {
+            if (!Streams.ContainsKey(key))
+                return;
+
+            var s = Streams[key];
+            OrderedStreams.Remove(s);
+            OrderedStreams.Add(s);
+        }
+
+        public long TotalSize {
+            get {
+                return OrderedStreams.Sum(os => os.Length);
+            }
+        }
+
         public KeyedStream GetStream<T> () {
             return GetStream(typeof(T).FullName);
         }

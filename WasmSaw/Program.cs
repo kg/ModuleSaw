@@ -15,7 +15,7 @@ namespace WasmSaw {
             if (args.Length != 2)
                 throw new Exception("Expected: WasmSaw input.wasm output.msaw\r\nor:       WasmSaw input.msaw output.wasm");
 
-            Console.Write("{0} ... ", args[0]);
+            Console.WriteLine("{0} ...", args[0]);
 
             // SelfTest();
 

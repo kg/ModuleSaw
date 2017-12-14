@@ -101,14 +101,8 @@ namespace WasmSaw {
             }
 
             if ((e.Body.Type & ExpressionBody.Types.children) != 0) {
-                var exprs = e.Body.children;
-                if (exprs != null) {
-                    Builder.Write((uint)exprs.Count, BlockSizes);
-                    foreach (var expr in exprs)
-                        Write(expr);
-                } else {
-                    Builder.Write((uint)0, BlockSizes);
-                }
+                foreach (var expr in e.Body.children)
+                    Write(expr);
             }
         }
 

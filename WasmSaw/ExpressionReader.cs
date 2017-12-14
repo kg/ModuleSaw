@@ -59,14 +59,13 @@ namespace Wasm.Model {
             result.Opcode = opcode.Value;
             result.State = ExpressionState.BodyNotRead;
 
-            Depth += 1;
             NumRead += 1;
 
             return true;
         }
 
         private bool GatherChildNodesUntil (ref ExpressionBody body, Predicate<Expression> pred) {
-            var result = new List<Expression>();
+            body.children = new List<Expression>();
             body.Type |= ExpressionBody.Types.children;
 
             var initialDepth = Depth;
@@ -78,12 +77,10 @@ namespace Wasm.Model {
                 if (!TryReadExpressionBody(ref e))
                     return false;
 
-                result.Add(e);
+                body.children.Add(e);
 
-                if (pred(e) && (Depth == initialDepth)) {
-                    body.children = result.Count > 0 ? result : null;
+                if (pred(e) && (Depth == initialDepth))
                     return true;
-                }
             }
         }
 
@@ -93,6 +90,7 @@ namespace Wasm.Model {
             if (expr.State == ExpressionState.Uninitialized)
                 throw new ArgumentException("Uninitialized expression");
 
+            Depth += 1;
             try {
                 switch (expr.Opcode) {
                     case Opcodes.nop:

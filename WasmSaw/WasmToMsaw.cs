@@ -36,12 +36,12 @@ namespace WasmSaw {
 
             Program.Assert(reader.ReadHeader(), "ReadHeader");
 
-            // Record these and then write them at the end of the encoded module
-            var dataSections = new List<DataSection>();
             var t = encoder.Types;
 
             SectionHeader sh;
             while (reader.ReadSectionHeader(out sh)) {
+                var previousSize = amb.TotalSize;
+
                 t.SectionHeader.Encode(ref sh);
 
                 switch (sh.id) {
@@ -100,8 +100,15 @@ namespace WasmSaw {
                     case SectionTypes.Data:
                         DataSection ds;
                         Program.Assert(reader.ReadDataSection(out ds));
-                        dataSections.Add(ds);
                         t.data_segment.Encode(ds.entries);
+
+                        var dataStream = amb.GetStream("data_segments");
+                        dataStream.Flush();
+
+                        foreach (var ent in ds.entries) {
+                            using (var subStream = new StreamWindow(wasm.BaseStream, ent.data_offset, ent.size))
+                                subStream.CopyTo(dataStream.BaseStream);
+                        }
                         break;
 
                     default:
@@ -117,17 +124,15 @@ namespace WasmSaw {
                         wasm.BaseStream.Seek(sh.payload_end, SeekOrigin.Begin);
                         break;
                 }
+
+                Console.WriteLine(
+                    "{0}: Wrote {1} byte(s) (from {2}b of wasm)", 
+                    sh.id, amb.TotalSize - previousSize, sh.payload_len
+                );
             }
 
-            var dataStream = amb.GetStream("data_segments");
-            dataStream.Flush();
-
-            foreach (var ds in dataSections) {
-                foreach (var ent in ds.entries) {
-                    using (var subStream = new StreamWindow(wasm.BaseStream, ent.data_offset, ent.size))
-                        subStream.CopyTo(dataStream.BaseStream);
-                }
-            }
+            amb.MoveStreamToBack("data_segments");
+            amb.MoveStreamToBack("unknown_section_data");
         }
     }
 }
