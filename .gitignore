@@ -7,3 +7,4 @@ obj/
 *.wasm
 *.gz
 *.bro
+/webassembly-examples-master
