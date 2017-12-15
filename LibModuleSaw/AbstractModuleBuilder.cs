@@ -18,11 +18,10 @@ namespace ModuleSaw {
 
         public KeyedStream
             IntStream, UIntStream,
-            LongStream, ULongStream,
-            SByteStream, ByteStream,
+            LongStream, ByteStream,
             SingleStream, DoubleStream,
             BooleanStream, ArrayLengthStream,
-            StringLengthStream, StringStream;
+            StringLengthStream;
 
         public Configuration Configuration;
 
@@ -34,16 +33,13 @@ namespace ModuleSaw {
             Configuration = new Configuration();
 
             LongStream = GetStream("i64");
-            ULongStream = GetStream("u64");
             IntStream = GetStream("i32");
             UIntStream = GetStream("u32");
-            SByteStream = GetStream("i8");
             ByteStream = GetStream("u8");
             SingleStream = GetStream("f32");
             DoubleStream = GetStream("f64");
             BooleanStream = GetStream("u1");
             StringLengthStream = GetStream("stringLength");
-            StringStream = GetStream("string");
             ArrayLengthStream = GetStream("arrayLength");
         }
 
@@ -86,14 +82,6 @@ namespace ModuleSaw {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write (ulong value, KeyedStream stream = null) {
-            if (Configuration.Varints)
-                (stream ?? ULongStream).WriteLEB(value);
-            else
-                (stream ?? ULongStream).Write(value);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (int value, KeyedStream stream = null) {
             if (Configuration.Varints)
                 (stream ?? IntStream).WriteLEB(value);
@@ -114,16 +102,11 @@ namespace ModuleSaw {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write (sbyte b) {
-            SByteStream.Write(b);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (byte b) {
             ByteStream.Write(b);
         }
 
-        public void Write (string text, KeyedStream stream = null) {
+        public void Write (string text, KeyedStream stream) {
             if (text == null) {
                 if (Configuration.Varints)
                     StringLengthStream.WriteLEB((uint)0);
@@ -142,7 +125,7 @@ namespace ModuleSaw {
                 else
                     StringLengthStream.Write(length);
 
-                (stream ?? StringStream).Write(bytes);
+                stream.Write(bytes);
             }
         }
 

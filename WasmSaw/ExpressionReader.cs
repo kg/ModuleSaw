@@ -53,8 +53,6 @@ namespace Wasm.Model {
             result.Opcode = (Opcodes)Reader.ReadByte();
             result.State = ExpressionState.BodyNotRead;
 
-            Console.WriteLine(result.Opcode);
-
             NumRead += 1;
 
             return true;

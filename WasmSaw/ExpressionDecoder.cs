@@ -74,7 +74,6 @@ namespace WasmSaw {
         private bool DecodeExpressionBody (ref Expression expr, AbstractModuleStreamReader stream) {
             var u32 = stream ?? Reader.UIntStream;
             var i32 = stream ?? Reader.IntStream;
-            var u64 = stream ?? Reader.ULongStream;
             var i64 = stream ?? Reader.LongStream;
             var f32 = stream ?? Reader.SingleStream;
             var f64 = stream ?? Reader.DoubleStream;

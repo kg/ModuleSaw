@@ -220,7 +220,6 @@ namespace Wasm.Model {
         [Flags]
         public enum Types : byte {
             none,
-            u64,
             u32,
             u1,
             i64,

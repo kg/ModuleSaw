@@ -64,11 +64,10 @@ namespace ModuleSaw {
 
         public AbstractModuleStreamReader
             IntStream, UIntStream,
-            LongStream, ULongStream,
-            SByteStream, ByteStream,
+            LongStream, ByteStream,
             SingleStream, DoubleStream,
             BooleanStream, ArrayLengthStream,
-            StringLengthStream, StringStream;
+            StringLengthStream;
 
         public AbstractModuleReader (Stream input, Configuration configuration) {
             Configuration = configuration;
@@ -142,25 +141,22 @@ namespace ModuleSaw {
             IntStream = Open(Streams["i32"]);
             UIntStream = Open(Streams["u32"]);
             LongStream = Open(Streams["i64"]);
-            ULongStream = Open(Streams["u64"]);
-            SByteStream = Open(Streams["i8"]);
             ByteStream = Open(Streams["u8"]);
             SingleStream = Open(Streams["f32"]);
             DoubleStream = Open(Streams["f64"]);
             BooleanStream = Open(Streams["u1"]);
             ArrayLengthStream = Open(Streams["arrayLength"]);
             StringLengthStream = Open(Streams["stringLength"]);
-            StringStream = Open(Streams["string"]);
         }
 
-        public string ReadString (AbstractModuleStreamReader stream = null) {
+        public string ReadString (AbstractModuleStreamReader stream) {
             var lengthPlusOne = StringLengthStream.ReadUInt32();
             if (lengthPlusOne == 0)
                 return null;
             else if (lengthPlusOne == 1)
                 return "";
 
-            var bytes = (stream ?? StringStream).ReadBytes((int)(lengthPlusOne - 1));
+            var bytes = stream.ReadBytes((int)(lengthPlusOne - 1));
             return Encoding.UTF8.GetString(bytes);
         }
 

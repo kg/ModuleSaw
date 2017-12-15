@@ -46,8 +46,9 @@ namespace Wasm.Model {
             else
                 sh.name = null;
 
-            sh.payload_start = Reader.BaseStream.Position;
-            sh.payload_end = position + sh.payload_len;
+            sh.StreamHeaderStart = position;
+            sh.StreamPayloadStart = Reader.BaseStream.Position;
+            sh.StreamPayloadEnd = position + sh.payload_len;
 
             // FIXME
             return true;
@@ -78,7 +79,7 @@ namespace Wasm.Model {
                 valid = false;
 
             ft.param_types = ReadList((i) => ReadLanguageType());
-            var return_count = Reader.ReadLEBUInt();
+            var return_count = Reader.ReadByte();
             if (return_count == 1)
                 ft.return_type = ReadLanguageType();
             else if (return_count > 1)

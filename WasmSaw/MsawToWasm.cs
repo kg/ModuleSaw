@@ -22,46 +22,41 @@ namespace WasmSaw {
 
             var sectionIds = amr.Open(amr.Streams["section_id"]);
             var sectionNames = amr.Open(amr.Streams["section_name"]);
-            var sectionPayloadLengths = amr.Open(amr.Streams["section_payload_len"]);
 
             var sectionCount = (uint)sectionIds.Length;
 
+            using (var scratchBuffer = new MemoryStream(256000))
+            using (var scratchWriter = new BinaryWriter(scratchBuffer, Encoding.UTF8))
             for (int i = 0; i < sectionCount; i++) {
+                scratchBuffer.SetLength(0);
+
                 var id = (SectionTypes)sectionIds.ReadSByte();
                 string name = null;
                 if (id == 0)
                     name = sectionNames.ReadString();
-                var payload_len = sectionPayloadLengths.ReadUInt32();
 
                 writer.Write((sbyte)id);
-                writer.WriteLEB(payload_len);
-
-                var actualPayloadSize = payload_len;
-
-                if (id == 0) {
-                    writer.Flush();
-                    var initOffset = writer.BaseStream.Position;
-
-                    writer.WritePString(name);
-
-                    writer.Flush();
-                    var lastOffset = writer.BaseStream.Position;
-
-                    actualPayloadSize -= (uint)(lastOffset - initOffset);
-                }
 
                 if (((sbyte)id <= 0) || ((sbyte)id >= (sbyte)SectionTypes.Unknown)) {
-                    // FIXME: Use CopyTo?
+                    var unknownSectionLengths = amr.Open(amr.Streams["unknown_section_length"]);
                     var unknownSectionData = amr.Open(amr.Streams["unknown_section_data"]);
-                    writer.Write(unknownSectionData.ReadBytes((int)actualPayloadSize));
+                    var length = unknownSectionLengths.ReadUInt32();
+                    
+                    scratchWriter.Flush();
+                    using (var sw = new StreamWindow(unknownSectionData.BaseStream, unknownSectionData.BaseStream.Position, length))
+                        sw.CopyTo(scratchWriter.BaseStream);
+
+                    unknownSectionData.BaseStream.Seek(length, SeekOrigin.Current);
                 } else {
+                    EmitSectionBody(amr, scratchWriter, id);
+                    scratchWriter.Flush();
+                    writer.WriteLEB((uint)scratchBuffer.Position);
                     writer.Flush();
-                    var oldPosition = writer.BaseStream.Position;
-                    EmitSectionBody(amr, writer, id, actualPayloadSize);
-                    writer.Flush();
-                    var newPosition = writer.BaseStream.Position;
-                    Console.WriteLine("{0}: Wrote {1} bytes (expected {2})", id, (newPosition - oldPosition), actualPayloadSize);
                 }
+
+                Console.WriteLine("{0}: Wrote {1} bytes", (id == 0) ? name : id.ToString(), scratchBuffer.Position);
+                scratchBuffer.Position = 0;
+                scratchBuffer.CopyTo(writer.BaseStream);
             }
 
             writer.Dispose();
@@ -69,7 +64,7 @@ namespace WasmSaw {
 
         private static void EmitSectionBody (
             AbstractModuleReader amr, BinaryWriter writer, 
-            SectionTypes id, uint payload_len
+            SectionTypes id
         ) {
             var td = new TypeDecoders(amr);
             switch (id) {
@@ -107,9 +102,6 @@ namespace WasmSaw {
 
                 default:
                     Console.WriteLine("Not implemented: {0}", id);
-
-                    for (int i = 0; i < payload_len; i++)
-                        writer.Write((byte)id);
                     break;
             }
         }
@@ -232,9 +224,6 @@ namespace WasmSaw {
                 case ExpressionBody.Types.none:
                     break;
 
-                case ExpressionBody.Types.u64:
-                    writer.WriteLEB(e.Body.U.u64);
-                    break;
                 case ExpressionBody.Types.u32:
                     writer.WriteLEB(e.Body.U.u32);
                     break;

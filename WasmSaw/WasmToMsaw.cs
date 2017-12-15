@@ -112,22 +112,20 @@ namespace WasmSaw {
                         break;
 
                     default:
-                        var s = amb.GetStream("unknown_sections");
-                        amb.Write((sbyte)sh.id, s);
-                        amb.Write(sh.name, s);
+                        var s = amb.GetStream("unknown_section_length");
                         amb.Write(sh.payload_len, s);
 
                         s = amb.GetStream("unknown_section_data");
-                        using (var src = new StreamWindow(wasm.BaseStream, sh.payload_start, sh.payload_end - sh.payload_start))
+                        using (var src = new StreamWindow(wasm.BaseStream, sh.StreamHeaderStart, sh.payload_len))
                             src.CopyTo(s.Stream);
 
-                        wasm.BaseStream.Seek(sh.payload_end, SeekOrigin.Begin);
+                        wasm.BaseStream.Seek(sh.StreamPayloadEnd, SeekOrigin.Begin);
                         break;
                 }
 
                 Console.WriteLine(
                     "{0}: Wrote {1} byte(s) (from {2}b of wasm)", 
-                    sh.id, amb.TotalSize - previousSize, sh.payload_len
+                    (sh.id == SectionTypes.Custom) ? sh.name : sh.id.ToString(), amb.TotalSize - previousSize, sh.payload_len
                 );
             }
 

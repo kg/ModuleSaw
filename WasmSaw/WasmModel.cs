@@ -50,7 +50,7 @@ namespace Wasm.Model {
         public string name;
 
         // Relative to start of file
-        public long payload_start, payload_end;
+        public long StreamHeaderStart, StreamPayloadStart, StreamPayloadEnd;
     }
 
     public struct TypeSection {
