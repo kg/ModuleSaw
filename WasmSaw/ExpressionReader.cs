@@ -53,6 +53,8 @@ namespace Wasm.Model {
             result.Opcode = (Opcodes)Reader.ReadByte();
             result.State = ExpressionState.BodyNotRead;
 
+            Console.WriteLine(result.Opcode);
+
             NumRead += 1;
 
             return true;
@@ -98,7 +100,7 @@ namespace Wasm.Model {
 
                     case Opcodes.block:
                     case Opcodes.loop:
-                        expr.Body.U.type = (LanguageTypes)Reader.ReadLEBInt();
+                        expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
                         expr.Body.Type = ExpressionBody.Types.type;
 
                         if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end))
@@ -107,7 +109,7 @@ namespace Wasm.Model {
                         break;
 
                     case Opcodes.@if:
-                        expr.Body.U.type = (LanguageTypes)Reader.ReadLEBInt();
+                        expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
                         expr.Body.Type = ExpressionBody.Types.type;
 
                         if (!GatherChildNodesUntil(
@@ -154,7 +156,7 @@ namespace Wasm.Model {
                     case Opcodes.call_indirect:
                         expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
                         expr.Body.Type = ExpressionBody.Types.u32;
-                        // FIXME
+                        // HACK
                         var reserved = Reader.ReadLEBUInt();
 
                         break;

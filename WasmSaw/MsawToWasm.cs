@@ -272,6 +272,10 @@ namespace WasmSaw {
                     throw new Exception("Not implemented");
             }
 
+            // HACK
+            if (e.Opcode == Opcodes.call_indirect)
+                writer.Write((byte)0);
+
             if (e.Body.children != null) {
                 Expression c;
                 for (int i = 0; i < e.Body.children.Count; i++) {
@@ -320,21 +324,16 @@ namespace WasmSaw {
             writer.WriteLEB(count);
 
             const bool checkSizes = false;
-            long initialPosition;
 
+            using (var buffer = new MemoryStream(65536))
+            using (var functionWriter = new BinaryWriter(buffer))
             for (uint i = 0; i < count; i++) {
                 var item = td.function_body();
-                writer.WriteLEB(item.body_size);
-
-                if (checkSizes) {
-                    writer.Flush();
-                    initialPosition = writer.BaseStream.Position;
-                }
-
-                writer.WriteLEB((uint)item.locals.Length);
+ 
+                functionWriter.WriteLEB((uint)item.locals.Length);
                 foreach (var l in item.locals) {
-                    writer.WriteLEB(l.count);
-                    writer.Write((byte)l.type);
+                    functionWriter.WriteLEB(l.count);
+                    functionWriter.Write((byte)l.type);
                 }
 
                 var expressionCount = countStream.ReadUInt32();
@@ -345,18 +344,18 @@ namespace WasmSaw {
                     if (!td.Expression.Decode(out e))
                         throw new Exception("Failed decoding function body " + e.Opcode);
 
-                    EmitExpression(writer, ref e, ref numEmitted);
+                    EmitExpression(functionWriter, ref e, ref numEmitted);
                 }
 
                 if (numEmitted > expressionCount)
                     throw new Exception("Decoded too many expressions");
+                
+                functionWriter.Flush();
 
-                if (checkSizes) {
-                    writer.Flush();
-                    var bytesWritten = writer.BaseStream.Position - initialPosition;
-                    if (bytesWritten != item.body_size)
-                        Console.WriteLine("Expected to write {0}b but wrote {1}b", item.body_size, bytesWritten);
-                }
+                writer.WriteLEB((uint)buffer.Position);
+                writer.Write(buffer.GetBuffer(), 0, (int)buffer.Position);
+
+                buffer.SetLength(0);
             }
         }
 

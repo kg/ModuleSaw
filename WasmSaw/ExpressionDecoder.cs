@@ -15,7 +15,7 @@ namespace WasmSaw {
 
         private AbstractModuleStreamReader OpcodeStream, GlobalIndices, LocalIndices,
             MemoryImmediates, BrTables, BlockTypes,
-            FunctionIndices, TypeIndices, BlockSizes;
+            FunctionIndices, TypeIndices;
 
         public ExpressionDecoder (TypeDecoders types) {
             Reader = types.Reader;
@@ -29,7 +29,6 @@ namespace WasmSaw {
             MemoryImmediates = GetStream("memory_immediate");
             BrTables = GetStream("br_table");
             BlockTypes = GetStream("block_type");
-            BlockSizes = GetStream("block_size");
         }
 
         private AbstractModuleStreamReader GetStreamForOpcode (Opcodes opcode) {
@@ -84,7 +83,7 @@ namespace WasmSaw {
             expr.Body.Type = ExpressionBody.Types.none;
             Depth += 1;
 
-                try {
+            try {
                 switch (expr.Opcode) {
                     case Opcodes.nop:
                     case Opcodes.unreachable:

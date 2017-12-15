@@ -264,6 +264,8 @@ namespace WasmSaw {
                     Expression e;
                     Opcodes previous = Opcodes.end;
 
+                    Console.WriteLine("----");
+
                     while (reader.TryReadExpression(out e)) {
                         if (!reader.TryReadExpressionBody(ref e))
                             throw new Exception("Failed to read body of " + e.Opcode);
