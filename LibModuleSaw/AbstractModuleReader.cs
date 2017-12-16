@@ -49,7 +49,7 @@ namespace ModuleSaw {
             }
         }
 
-        public readonly BinaryReader Reader;
+        public readonly AbstractModuleStreamReader Reader;
         private readonly MemoryStream BaseStream;
         private readonly byte[] Bytes;
 
@@ -129,7 +129,7 @@ namespace ModuleSaw {
 
             Streams.Headers = headers;
 
-            if (Reader.ReadUInt32() != AbstractModuleBuilder.BoundaryMarker2)
+            if (br.ReadUInt32() != AbstractModuleBuilder.BoundaryMarker2)
                 return false;
 
             PreopenStreams();
