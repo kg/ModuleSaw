@@ -29,8 +29,9 @@ namespace WasmSaw {
             using (var scratchWriter = new BinaryWriter(scratchBuffer, Encoding.UTF8))
             for (int i = 0; i < sectionCount; i++) {
                 scratchBuffer.SetLength(0);
-
-                Check(sectionIds.Read(out SectionTypes id));
+                
+                Check(sectionIds.Read(out sbyte b));
+                var id = (SectionTypes)b;
                 
                 string name = null;
                 if (id == 0) {

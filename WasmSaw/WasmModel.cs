@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using ModuleSaw;
 
 namespace Wasm.Model {
     public enum SectionTypes : sbyte {
@@ -181,5 +182,19 @@ namespace Wasm.Model {
         public byte flags;
         public uint initial;
         public uint maximum;
+    }
+
+    public static class ModelExtensions {
+        public static bool Read (this ArrayBinaryReader reader, out LanguageTypes result) {
+            var ok = reader.Read(out byte b);
+            result = (LanguageTypes)b;
+            return ok;
+        }
+
+        public static bool Read (this ArrayBinaryReader reader, out external_kind result) {
+            var ok = reader.Read(out byte b);
+            result = (external_kind)b;
+            return ok;
+        }
     }
 }

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace ModuleSaw {
     public class KeyedStream : BinaryWriter {
         public const uint MaxKeyLength = 48;
-        public const uint HeaderSize = (sizeof(long) * 2) + MaxKeyLength;
+        public const uint HeaderSize = (sizeof(uint) * 2) + MaxKeyLength;
 
         public readonly string Key;
         public MemoryStream Stream { get; private set; }
@@ -29,7 +29,7 @@ namespace ModuleSaw {
 
         public long Length => Stream.Length;
 
-        internal unsafe void WriteHeader (BinaryWriter output, long offsetOfData) {
+        internal unsafe void WriteHeader (BinaryWriter output, uint offsetOfData) {
             var keyBuffer = new byte[MaxKeyLength];
             int _;
             bool ok;
@@ -41,7 +41,7 @@ namespace ModuleSaw {
 
             output.Write(keyBuffer);
             output.Write(offsetOfData);
-            output.Write(Stream.Length);
+            output.Write((uint)Stream.Length);
         }
     }
 }

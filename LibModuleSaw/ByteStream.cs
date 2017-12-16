@@ -23,7 +23,7 @@ namespace ModuleSaw {
             Pin = GCHandle.Alloc(Data.Array, GCHandleType.Pinned);
             Length = length.GetValueOrDefault((uint)data.Count);
             pStart = ((byte*)Pin.AddrOfPinnedObject()) + data.Offset;
-            pEnd = pData + Length;
+            pEnd = pStart + Length;
             pData = pStart + initialPosition.GetValueOrDefault(0);
         }
 
@@ -75,30 +75,62 @@ namespace ModuleSaw {
             }
         }
 
-        [StructLayout(LayoutKind.Explicit)]
-        private struct ReadUnion<T> {
-            [FieldOffset(0)]
-            public fixed byte buffer[128];
-            [FieldOffset(0)]
-            public T value;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Read (out sbyte result) {
+            if (pData >= pEnd) {
+                result = 0;
+                return false;
+            } else {
+                result = *(sbyte*)(pData++);
+                return true;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Read (out bool result) {
+            if (pData >= pEnd) {
+                result = false;
+                return false;
+            } else {
+                result = *(pData++) != 0;
+                return true;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]        
-        public bool Read<T> (out T result)
-            where T : struct {
-            var u = default(ReadUnion<T>);
-            var size = Marshal.SizeOf<T>();
+        public bool Read (out uint result) {
+            fixed (uint* p = &result)
+                return Read(p, sizeof(uint));
+        }
 
-            if (
-                (size > 128) || 
-                !Read(u.buffer, (uint)size)
-            ) {
-                result = default(T);
-                return false;
-            }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        public bool Read (out ulong result) {
+            fixed (ulong* p = &result)
+                return Read(p, sizeof(ulong));
+        }
 
-            result = u.value;
-            return true;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        public bool Read (out int result) {
+            fixed (int* p = &result)
+                return Read(p, sizeof(int));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        public bool Read (out long result) {
+            fixed (long* p = &result)
+                return Read(p, sizeof(long));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        public bool Read (out float result) {
+            fixed (float* p = &result)
+                return Read(p, sizeof(float));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        public bool Read (out double result) {
+            fixed (double* p = &result)
+                return Read(p, sizeof(double));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

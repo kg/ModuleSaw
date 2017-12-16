@@ -88,7 +88,9 @@ namespace ModuleSaw {
 
         private bool ReadPrologue () {
             var buffer = new byte[AbstractModuleBuilder.Prologue.Length];
-            return Reader.Read(buffer) && buffer.SequenceEqual(AbstractModuleBuilder.Prologue);
+            if (!Reader.Read(buffer))
+                return false;
+            return buffer.SequenceEqual(AbstractModuleBuilder.Prologue);
         }
         
         public bool ReadHeader () {

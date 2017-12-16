@@ -56,11 +56,12 @@ namespace WasmSaw {
         public bool Decode (
             out Expression e
         ) {
-            if (!OpcodeStream.Read(out Opcodes opcode)) {
+            if (!OpcodeStream.Read(out byte b)) {
                 e = default(Expression);
                 return false;
             }
 
+            var opcode = (Opcodes)b;
             var stream = GetStreamForOpcode(opcode);
 
             e = new Expression {

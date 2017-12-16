@@ -132,15 +132,15 @@ namespace ModuleSaw {
 
                 writer.Flush();
 
-                long startOfHeaders = writer.BaseStream.Position;
-                long headerSize = KeyedStream.HeaderSize;
-                long endOfHeaders = startOfHeaders + (OrderedStreams.Count * headerSize) + 4;
+                var startOfHeaders = (uint)writer.BaseStream.Position;
+                var headerSize = KeyedStream.HeaderSize;
+                var endOfHeaders = startOfHeaders + (uint)(OrderedStreams.Count * headerSize) + 4;
 
-                long dataOffset = endOfHeaders;
+                var dataOffset = endOfHeaders;
 
                 foreach (var s in OrderedStreams) {
                     s.WriteHeader(writer, dataOffset);
-                    dataOffset += s.Length + 4;
+                    dataOffset += (uint)s.Length + 4;
                 }
 
                 writer.Write(BoundaryMarker2);
