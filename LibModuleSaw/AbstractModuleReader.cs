@@ -95,17 +95,17 @@ namespace ModuleSaw {
             if (!ReadPrologue())
                 return false;
 
-            if (!Reader.ReadI32(out int subFormatLength))
+            if (!Reader.Read(out int subFormatLength))
                 return false;
 
             if (!Reader.Seek(subFormatLength))
                 return false;
 
-            if (!Reader.ReadU32(out uint temp) || 
+            if (!Reader.Read(out uint temp) || 
                 (temp != AbstractModuleBuilder.BoundaryMarker1))
                 return false;
 
-            if (!Reader.ReadI32(out int streamCount))
+            if (!Reader.Read(out int streamCount))
                 return false;
 
             var headers = new StreamHeader[streamCount];
@@ -120,10 +120,10 @@ namespace ModuleSaw {
                     Key = Encoding.UTF8.GetString(keyBuffer, 0, Array.IndexOf(keyBuffer, (byte)0))
                 };
 
-                if (!Reader.ReadU32(out headers[i].Offset))
+                if (!Reader.Read(out headers[i].Offset))
                     return false;
 
-                if (!Reader.ReadU32(out headers[i].Length))
+                if (!Reader.Read(out headers[i].Length))
                     return false;
 
                 Streams.Table.Add(headers[i].Key, headers[i]);
@@ -131,7 +131,7 @@ namespace ModuleSaw {
 
             Streams.Headers = headers;
 
-            if (!Reader.ReadU32(out temp) ||
+            if (!Reader.Read(out temp) ||
                 (temp != AbstractModuleBuilder.BoundaryMarker2))
                 return false;
 

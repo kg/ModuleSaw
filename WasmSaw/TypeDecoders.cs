@@ -16,7 +16,7 @@ namespace WasmSaw {
             Expression = new ExpressionDecoder(this);
         }
 
-        public AbstractModuleStreamReader GetStream (string key) {
+        public ArrayBinaryReader GetStream (string key) {
             return Reader.Open(Reader.Streams[key]);
         }
 

@@ -59,14 +59,21 @@ namespace ModuleSaw {
                 return null;
 
             fixed (byte* pBuffer = LEBBuffer) {
-                var result = ReadLEBUInt(pBuffer, (uint)count, out uint bytesRead);
+                var ok = ReadLEBUInt(pBuffer, (uint)count, out ulong result, out uint bytesRead);
                 br.Position -= (count - bytesRead);
-                return result;
+                if (ok)
+                    return result;
+                else
+                    return null;
             }
         }
 
-        public unsafe static ulong? ReadLEBUInt (byte* pBytes, uint count, out uint bytesRead) {
-            ulong result = 0;
+        public unsafe static bool ReadLEBUInt (
+            byte* pBytes, uint count, 
+            out ulong result, out uint bytesRead
+        ) {
+            result = 0;
+            bytesRead = 0;
             int shift = 0;
 
             for (uint i = 0; i < count; i++) {
@@ -76,14 +83,13 @@ namespace ModuleSaw {
 
                 if ((b & 0x80) == 0) {
                     bytesRead = i + 1;
-                    return result;
+                    return true;
                 }
 
                 shift += 7;
             }
 
-            bytesRead = 0;
-            return null;
+            return false;
         }
 
         public unsafe static long? ReadLEBInt (this BinaryReader reader) {
@@ -93,19 +99,27 @@ namespace ModuleSaw {
                 return null;
 
             fixed (byte* pBuffer = LEBBuffer) {
-                var result = ReadLEBInt(pBuffer, (uint)count, out uint bytesRead);
+                var ok = ReadLEBInt(pBuffer, (uint)count, out long result, out uint bytesRead);
                 br.Position -= (count - bytesRead);
-                return result;
+                if (ok)
+                    return result;
+                else
+                    return null;
             }
         }
         
-        public unsafe static long? ReadLEBInt (byte* pBytes, uint count, out uint bytesRead) {
-            long result = 0;
+        public unsafe static bool ReadLEBInt (
+            byte* pBytes, uint count, 
+            out long result, out uint bytesRead
+        ) {
             int shift = 0;
             byte b = 0;
 
+            result = 0;
+            bytesRead = 0;
+
             for (uint i = 0; i < count; i++) {
-                b = LEBBuffer[i];
+                b = pBytes[i];
                 var shifted = (long)(b & 0x7F) << shift;
                 result |= shifted;
                 shift += 7;
@@ -114,12 +128,11 @@ namespace ModuleSaw {
                     bytesRead = i + 1;
                     if ((b & 0x40) != 0)
                         result |= (((long)-1) << shift);
-                    return result;
+                    return true;
                 }
             }
 
-            bytesRead = 0;
-            return null;
+            return false;
         }
 
         public static string ReadPString (this BinaryReader reader) {

@@ -49,7 +49,7 @@ namespace WasmSaw {
                     Check(unknownSectionLengths.ReadU32LEB(out uint length));
                     
                     scratchWriter.Flush();
-                    unknownSectionData.CopyToStream(scratchWriter.BaseStream, length);
+                    unknownSectionData.CopyTo(scratchWriter.BaseStream, length);
                 } else {
                     EmitSectionBody(amr, scratchWriter, id);
                     scratchWriter.Flush();
@@ -194,8 +194,10 @@ namespace WasmSaw {
 
             var indices = amr.Open(amr.Streams["function_index"]);
 
-            for (uint i = 0; i < count; i++)
-                writer.WriteLEB(indices.ReadUInt32());
+            for (uint i = 0; i < count; i++) {
+                Check(indices.ReadU32LEB(out uint index));
+                writer.WriteLEB(index);
+            }
         }
 
         private static void EmitGlobalSection (
@@ -320,8 +322,6 @@ namespace WasmSaw {
             var count = amr.ReadArrayLength();
             writer.WriteLEB(count);
 
-            const bool checkSizes = false;
-
             using (var buffer = new MemoryStream(65536))
             using (var functionWriter = new BinaryWriter(buffer))
             for (uint i = 0; i < count; i++) {
@@ -333,7 +333,7 @@ namespace WasmSaw {
                     functionWriter.Write((byte)l.type);
                 }
 
-                var expressionCount = countStream.ReadUInt32();
+                Check(countStream.ReadU32LEB(out uint expressionCount));
                 uint numEmitted = 0;
 
                 while (numEmitted < expressionCount) {
@@ -370,7 +370,7 @@ namespace WasmSaw {
                 EmitInitExpression(writer, ref item.offset);
                 writer.WriteLEB(item.size);
 
-                writer.Write(dataStream.ReadBytes((int)item.size));
+                dataStream.CopyTo(writer, item.size);
                 /*
                 writer.Flush();
                 var bs = dataStream.BaseStream;

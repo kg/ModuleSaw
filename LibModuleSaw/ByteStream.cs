@@ -137,42 +137,82 @@ namespace ModuleSaw {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool ReadI32 (out int result) {
-            fixed (int* pResult = &result)
-                return Read(pResult, sizeof(int));
+        public bool ReadI32LEB (out int result) {
+            var remaining = pEnd - pData;
+            if (remaining <= 0) {
+                result = 0;
+                return false;
+            }
+
+            var ok = VarintExtensions.ReadLEBInt(
+                pData, (uint)remaining, out long temp, out uint bytesRead
+            );
+            if (ok)
+                result = (int)temp;
+            else
+                result = 0;
+            pData += bytesRead;
+            return ok;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool ReadU32 (out uint result) {
-            fixed (uint* pResult = &result)
-                return Read(pResult, sizeof(uint));
+        public bool ReadU32LEB (out uint result) {
+            var remaining = pEnd - pData;
+            if (remaining <= 0) {
+                result = 0;
+                return false;
+            }
+
+            var ok = VarintExtensions.ReadLEBUInt(
+                pData, (uint)remaining, out ulong temp, out uint bytesRead
+            );
+            if (ok)
+                result = (uint)temp;
+            else
+                result = 0;
+            pData += bytesRead;
+            return ok;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool ReadF32 (out float result) {
-            fixed (float* pResult = &result)
-                return Read(pResult, sizeof(float));
+        public bool ReadI64LEB (out long result) {
+            var remaining = pEnd - pData;
+            if (remaining <= 0) {
+                result = 0;
+                return false;
+            }
+
+            var ok = VarintExtensions.ReadLEBInt(
+                pData, (uint)remaining, out result, out uint bytesRead
+            );
+            pData += bytesRead;
+            return ok;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool ReadI64 (out long result) {
-            fixed (long* pResult = &result)
-                return Read(pResult, sizeof(long));
+        public bool ReadU64LEB (out ulong result) {
+            var remaining = pEnd - pData;
+            if (remaining <= 0) {
+                result = 0;
+                return false;
+            }
+
+            var ok = VarintExtensions.ReadLEBUInt(
+                pData, (uint)remaining, out result, out uint bytesRead
+            );
+            pData += bytesRead;
+            return ok;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool ReadU64 (out ulong result) {
-            fixed (ulong* pResult = &result)
-                return Read(pResult, sizeof(ulong));
+        public bool CopyTo (Stream destination, uint length) {
+            if (!Chomp(out byte* temp, length))
+                return false;
+
+            destination.Write(Data.Array, (int)(Data.Offset + (temp - pStart)), (int)length);
+            return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool ReadF64 (out double result) {
-            fixed (double* pResult = &result)
-                return Read(pResult, sizeof(double));
-        }
-
-        public bool CopyToStream (Stream destination, uint length) {
+        public bool CopyTo (BinaryWriter destination, uint length) {
             if (!Chomp(out byte* temp, length))
                 return false;
 

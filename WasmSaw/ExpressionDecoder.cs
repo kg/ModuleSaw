@@ -184,13 +184,13 @@ namespace WasmSaw {
                         break;
 
                     case Opcodes.f32_const:
-                        if (!f32.ReadF32(out expr.Body.U.f32))
+                        if (!f32.Read(out expr.Body.U.f32))
                             return false;
                         expr.Body.Type = ExpressionBody.Types.f32;
                         break;
 
                     case Opcodes.f64_const:
-                        if (!f64.ReadF64(out expr.Body.U.f64))
+                        if (!f64.Read(out expr.Body.U.f64))
                             return false;
                         expr.Body.Type = ExpressionBody.Types.f64;
                         break;
