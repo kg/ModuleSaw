@@ -19,16 +19,14 @@ namespace WasmSaw {
 
             Console.WriteLine("{0} ...", args[0]);
 
-            var config = CreateConfiguration();
-
             using (var inputFile = File.OpenRead(args[0]))
             using (var outputFile = File.OpenWrite(args[1])) {
                 outputFile.SetLength(0);
 
                 if (IsThisWasm(inputFile))
-                    WasmToMsaw.Convert(inputFile, outputFile, config);
-                else if (IsThisMsaw(inputFile, config))
-                    MsawToWasm.Convert(inputFile, outputFile, config);
+                    WasmToMsaw.Convert(inputFile, outputFile);
+                else if (IsThisMsaw(inputFile))
+                    MsawToWasm.Convert(inputFile, outputFile);
                 else
                     throw new Exception("Unrecognized input format");
             }
@@ -37,14 +35,6 @@ namespace WasmSaw {
 
             if (Debugger.IsAttached)
                 Console.ReadLine();
-        }
-
-        private static Configuration CreateConfiguration () {
-            var result = new Configuration {
-                Varints = true
-            };
-
-            return result;
         }
         
         public static bool IsThisWasm (Stream input) {
@@ -56,7 +46,7 @@ namespace WasmSaw {
             }
         }
 
-        public static bool IsThisMsaw (Stream input, Configuration configuration) {
+        public static bool IsThisMsaw (Stream input) {
             input.Position = 0;
 
             using (var reader = new BinaryReader(input, Encoding.UTF8, true)) {

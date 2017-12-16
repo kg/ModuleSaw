@@ -9,10 +9,10 @@ using Wasm.Model;
 
 namespace WasmSaw {
     public static class MsawToWasm {
-        public static void Convert (Stream input, Stream output, Configuration config) {
+        public static void Convert (Stream input, Stream output) {
             input.Position = 0;
 
-            var amr = new AbstractModuleReader(input, config);
+            var amr = new AbstractModuleReader(input);
             var writer = new BinaryWriter(output, Encoding.UTF8, true);
 
             Program.Assert(amr.ReadHeader());

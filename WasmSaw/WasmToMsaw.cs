@@ -9,10 +9,8 @@ using Wasm.Model;
 
 namespace WasmSaw {
     public static class WasmToMsaw {
-        public static void Convert (Stream input, Stream output, Configuration config) {
-            var amb = new AbstractModuleBuilder {
-                Configuration = config
-            };
+        public static void Convert (Stream input, Stream output) {
+            var amb = new AbstractModuleBuilder();
 
             // HACK: Much faster to read everything in at once, because
             //  we need to seek a lot to decode functions

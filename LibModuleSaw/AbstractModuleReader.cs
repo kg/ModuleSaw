@@ -53,8 +53,6 @@ namespace ModuleSaw {
         private readonly MemoryStream BaseStream;
         private readonly byte[] Bytes;
 
-        public Configuration Configuration;
-
         public readonly StreamList Streams = new StreamList();
 
         private readonly Dictionary<string, AbstractModuleStreamReader> StreamCache =
@@ -69,15 +67,13 @@ namespace ModuleSaw {
             BooleanStream, ArrayLengthStream,
             StringLengthStream;
 
-        public AbstractModuleReader (Stream input, Configuration configuration) {
-            Configuration = configuration;
-
+        public AbstractModuleReader (Stream input) {
             // This sucks :(
             Bytes = new byte[input.Length];
             input.Read(Bytes, 0, (int)input.Length);
 
             BaseStream = new MemoryStream(Bytes, false);
-            Reader = new AbstractModuleStreamReader(Configuration, BaseStream);
+            Reader = new AbstractModuleStreamReader(BaseStream);
         }
 
         public AbstractModuleStreamReader Open (StreamHeader header) {
@@ -90,7 +86,7 @@ namespace ModuleSaw {
 
         public AbstractModuleStreamReader OpenNew (StreamHeader header) {
             var stream = new MemoryStream(Bytes, (int)header.Offset, (int)header.Length, false);
-            return new AbstractModuleStreamReader(Configuration, stream);
+            return new AbstractModuleStreamReader(stream);
         }
 
         private bool ReadPrologue () {
@@ -174,12 +170,9 @@ namespace ModuleSaw {
     }
 
     public class AbstractModuleStreamReader : BinaryReader {
-        public readonly Configuration Configuration;
-
-        public AbstractModuleStreamReader (Configuration configuration, Stream input) 
+        public AbstractModuleStreamReader (Stream input) 
             : base(input, Encoding.UTF8, false) 
         {
-            Configuration = configuration;
         }
 
         public long Length {
@@ -187,31 +180,19 @@ namespace ModuleSaw {
         }
 
         new public int ReadInt32 () {
-            if (Configuration.Varints)
-                return (int)this.ReadLEBInt();
-            else
-                return base.ReadInt32();
+            return (int)this.ReadLEBInt();
         }
 
         new public uint ReadUInt32 () {
-            if (Configuration.Varints)
-                return (uint)this.ReadLEBUInt();
-            else
-                return base.ReadUInt32();
+            return (uint)this.ReadLEBUInt();
         }
 
         new public long ReadInt64 () {
-            if (Configuration.Varints)
-                return (long)this.ReadLEBInt();
-            else
-                return base.ReadInt64();
+            return (long)this.ReadLEBInt();
         }
 
         new public ulong ReadUInt64 () {
-            if (Configuration.Varints)
-                return (ulong)this.ReadLEBUInt();
-            else
-                return base.ReadUInt64();
+            return (ulong)this.ReadLEBUInt();
         }
     }
 }

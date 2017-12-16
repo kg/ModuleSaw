@@ -40,7 +40,6 @@
     <Compile Include="AbstractModuleBuilder.cs" />
     <Compile Include="AbstractModuleReader.cs" />
     <Compile Include="ByteStream.cs" />
-    <Compile Include="Configuration.cs" />
     <Compile Include="KeyedStream.cs" />
     <Compile Include="StreamWindow.cs" />
     <Compile Include="Varint.cs" />

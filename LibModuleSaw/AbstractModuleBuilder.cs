@@ -23,15 +23,11 @@ namespace ModuleSaw {
             BooleanStream, ArrayLengthStream,
             StringLengthStream;
 
-        public Configuration Configuration;
-
         private readonly Dictionary<string, KeyedStream> Streams = 
             new Dictionary<string, KeyedStream>(StringComparer.Ordinal);
         private readonly List<KeyedStream> OrderedStreams = new List<KeyedStream>();
 
         public AbstractModuleBuilder () {
-            Configuration = new Configuration();
-
             LongStream = GetStream("i64");
             IntStream = GetStream("i32");
             UIntStream = GetStream("u32");
@@ -75,26 +71,17 @@ namespace ModuleSaw {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (long value, KeyedStream stream = null) {
-            if (Configuration.Varints)
-                (stream ?? LongStream).WriteLEB(value);
-            else
-                (stream ?? LongStream).Write(value);
+            (stream ?? LongStream).WriteLEB(value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (int value, KeyedStream stream = null) {
-            if (Configuration.Varints)
-                (stream ?? IntStream).WriteLEB(value);
-            else
-                (stream ?? IntStream).Write(value);
+            (stream ?? IntStream).WriteLEB(value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (uint value, KeyedStream stream = null) {
-            if (Configuration.Varints)
-                (stream ?? UIntStream).WriteLEB(value);
-            else
-                (stream ?? UIntStream).Write(value);
+            (stream ?? UIntStream).WriteLEB(value);
         }
 
         public void Write (bool value) {
@@ -108,10 +95,7 @@ namespace ModuleSaw {
 
         public void Write (string text, KeyedStream stream) {
             if (text == null) {
-                if (Configuration.Varints)
-                    StringLengthStream.WriteLEB((uint)0);
-                else
-                    StringLengthStream.Write((uint)0);
+                StringLengthStream.WriteLEB((uint)0);
 
                 return;
             }
@@ -120,10 +104,7 @@ namespace ModuleSaw {
                 var bytes = Encoding.UTF8.GetBytes(text);
                 var length = (uint)(bytes.Length + 1);
 
-                if (Configuration.Varints)
-                    StringLengthStream.WriteLEB(length);
-                else
-                    StringLengthStream.Write(length);
+                StringLengthStream.WriteLEB(length);
 
                 stream.Write(bytes);
             }
