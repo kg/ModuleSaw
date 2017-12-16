@@ -10,8 +10,8 @@ namespace ModuleSaw {
     public class AbstractModuleReader {
         public struct StreamHeader {
             public string Key;
-            public long   Offset;
-            public long   Length;
+            public uint   Offset;
+            public uint   Length;
         }
 
         public class StreamList : IEnumerable<StreamHeader> {
@@ -49,18 +49,17 @@ namespace ModuleSaw {
             }
         }
 
-        public readonly AbstractModuleStreamReader Reader;
-        private readonly MemoryStream BaseStream;
+        public readonly ArrayBinaryReader Reader;
         private readonly byte[] Bytes;
 
         public readonly StreamList Streams = new StreamList();
 
-        private readonly Dictionary<string, AbstractModuleStreamReader> StreamCache =
-            new Dictionary<string, AbstractModuleStreamReader>(StringComparer.Ordinal);
+        private readonly Dictionary<string, ArrayBinaryReader> StreamCache =
+            new Dictionary<string, ArrayBinaryReader>(StringComparer.Ordinal);
 
         public string SubFormat { get; private set; }
 
-        public AbstractModuleStreamReader
+        public ArrayBinaryReader
             IntStream, UIntStream,
             LongStream, ByteStream,
             SingleStream, DoubleStream,
@@ -72,60 +71,68 @@ namespace ModuleSaw {
             Bytes = new byte[input.Length];
             input.Read(Bytes, 0, (int)input.Length);
 
-            BaseStream = new MemoryStream(Bytes, false);
-            Reader = new AbstractModuleStreamReader(BaseStream);
+            Reader = new ArrayBinaryReader(Bytes);
         }
 
-        public AbstractModuleStreamReader Open (StreamHeader header) {
-            AbstractModuleStreamReader result;
+        public ArrayBinaryReader Open (StreamHeader header) {
+            ArrayBinaryReader result;
             if (!StreamCache.TryGetValue(header.Key, out result))
                 StreamCache[header.Key] = result = OpenNew(header);
 
             return result;
         }
 
-        public AbstractModuleStreamReader OpenNew (StreamHeader header) {
-            var stream = new MemoryStream(Bytes, (int)header.Offset, (int)header.Length, false);
-            return new AbstractModuleStreamReader(stream);
+        public ArrayBinaryReader OpenNew (StreamHeader header) {
+            return new ArrayBinaryReader(Bytes, (uint)header.Offset, (uint)header.Length);
         }
 
         private bool ReadPrologue () {
-            var buffer = Reader.ReadBytes(AbstractModuleBuilder.Prologue.Length);
-            return buffer.SequenceEqual(AbstractModuleBuilder.Prologue);
+            var buffer = new byte[AbstractModuleBuilder.Prologue.Length];
+            return Reader.Read(buffer) && buffer.SequenceEqual(AbstractModuleBuilder.Prologue);
         }
         
         public bool ReadHeader () {
-            // Access base methods
-            var br = (BinaryReader)Reader;
-
             if (!ReadPrologue())
                 return false;
 
-            SubFormat = br.ReadString();
-
-            if (br.ReadUInt32() != AbstractModuleBuilder.BoundaryMarker1)
+            if (!Reader.ReadI32(out int subFormatLength))
                 return false;
 
-            var streamCount = br.ReadInt32();
+            if (!Reader.Seek(subFormatLength))
+                return false;
+
+            if (!Reader.ReadU32(out uint temp) || 
+                (temp != AbstractModuleBuilder.BoundaryMarker1))
+                return false;
+
+            if (!Reader.ReadI32(out int streamCount))
+                return false;
+
             var headers = new StreamHeader[streamCount];
             var keyBuffer = new byte[KeyedStream.MaxKeyLength];
             Streams.Table.Clear();
 
             for (int i = 0; i < streamCount; i++) {
-                br.Read(keyBuffer, 0, keyBuffer.Length);
+                if (!Reader.Read(keyBuffer))
+                    return false;
 
                 headers[i] = new StreamHeader {
-                    Key = Encoding.UTF8.GetString(keyBuffer, 0, Array.IndexOf(keyBuffer, (byte)0)),
-                    Offset = br.ReadInt64(),
-                    Length = br.ReadInt64()
+                    Key = Encoding.UTF8.GetString(keyBuffer, 0, Array.IndexOf(keyBuffer, (byte)0))
                 };
+
+                if (!Reader.ReadU32(out headers[i].Offset))
+                    return false;
+
+                if (!Reader.ReadU32(out headers[i].Length))
+                    return false;
 
                 Streams.Table.Add(headers[i].Key, headers[i]);
             }
 
             Streams.Headers = headers;
 
-            if (br.ReadUInt32() != AbstractModuleBuilder.BoundaryMarker2)
+            if (!Reader.ReadU32(out temp) ||
+                (temp != AbstractModuleBuilder.BoundaryMarker2))
                 return false;
 
             PreopenStreams();
@@ -145,19 +152,26 @@ namespace ModuleSaw {
             StringLengthStream = Open(Streams["stringLength"]);
         }
 
-        public string ReadString (AbstractModuleStreamReader stream) {
-            var lengthPlusOne = StringLengthStream.ReadUInt32();
+        public string ReadString (ArrayBinaryReader stream) {
+            if (!StringLengthStream.ReadU32LEB(out uint lengthPlusOne))
+                return null;
+
             if (lengthPlusOne == 0)
                 return null;
             else if (lengthPlusOne == 1)
                 return "";
 
-            var bytes = stream.ReadBytes((int)(lengthPlusOne - 1));
+            var bytes = new byte[lengthPlusOne - 1];
+            if (!stream.Read(bytes))
+                return null;
+
             return Encoding.UTF8.GetString(bytes);
         }
 
         public uint ReadArrayLength () {
-            return ArrayLengthStream.ReadUInt32();
+            if (!ArrayLengthStream.ReadU32LEB(out uint result))
+                throw new EndOfStreamException();
+            return result;
         }
 
         public T[] ReadArray<T> (Func<T> readElement) {
@@ -166,33 +180,6 @@ namespace ModuleSaw {
             for (uint i = 0; i < length; i++)
                 result[i] = readElement();
             return result;
-        }
-    }
-
-    public class AbstractModuleStreamReader : BinaryReader {
-        public AbstractModuleStreamReader (Stream input) 
-            : base(input, Encoding.UTF8, false) 
-        {
-        }
-
-        public long Length {
-            get => BaseStream.Length;
-        }
-
-        new public int ReadInt32 () {
-            return (int)this.ReadLEBInt();
-        }
-
-        new public uint ReadUInt32 () {
-            return (uint)this.ReadLEBUInt();
-        }
-
-        new public long ReadInt64 () {
-            return (long)this.ReadLEBInt();
-        }
-
-        new public ulong ReadUInt64 () {
-            return (ulong)this.ReadLEBUInt();
         }
     }
 }

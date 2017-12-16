@@ -52,54 +52,73 @@ namespace ModuleSaw {
         // HACK: Not thread-safe
         private static byte[] LEBBuffer = new byte[10];
 
-        public static ulong? ReadLEBUInt (this BinaryReader reader) {
+        public unsafe static ulong? ReadLEBUInt (this BinaryReader reader) {
             var br = reader.BaseStream;
             var count = br.Read(LEBBuffer, 0, 10);
             if (count == 0)
                 return null;
 
+            fixed (byte* pBuffer = LEBBuffer) {
+                var result = ReadLEBUInt(pBuffer, (uint)count, out uint bytesRead);
+                br.Position -= (count - bytesRead);
+                return result;
+            }
+        }
+
+        public unsafe static ulong? ReadLEBUInt (byte* pBytes, uint count, out uint bytesRead) {
             ulong result = 0;
             int shift = 0;
-            for (int i = 0; i < count; i++) {
-                var b = LEBBuffer[i];
+
+            for (uint i = 0; i < count; i++) {
+                var b = pBytes[i];
                 var shifted = (ulong)(b & 0x7F) << shift;
                 result |= shifted;
 
                 if ((b & 0x80) == 0) {
-                    br.Position -= (count - i - 1);
+                    bytesRead = i + 1;
                     return result;
                 }
 
                 shift += 7;
             }
 
+            bytesRead = 0;
             return null;
         }
 
-        public static long? ReadLEBInt (this BinaryReader reader) {
+        public unsafe static long? ReadLEBInt (this BinaryReader reader) {
             var br = reader.BaseStream;
             var count = br.Read(LEBBuffer, 0, 10);
             if (count == 0)
                 return null;
 
+            fixed (byte* pBuffer = LEBBuffer) {
+                var result = ReadLEBInt(pBuffer, (uint)count, out uint bytesRead);
+                br.Position -= (count - bytesRead);
+                return result;
+            }
+        }
+        
+        public unsafe static long? ReadLEBInt (byte* pBytes, uint count, out uint bytesRead) {
             long result = 0;
             int shift = 0;
             byte b = 0;
 
-            for (int i = 0; i < count; i++) {
+            for (uint i = 0; i < count; i++) {
                 b = LEBBuffer[i];
                 var shifted = (long)(b & 0x7F) << shift;
                 result |= shifted;
                 shift += 7;
 
                 if ((b & 0x80) == 0) {
-                    br.Position -= (count - i - 1);
+                    bytesRead = i + 1;
                     if ((b & 0x40) != 0)
                         result |= (((long)-1) << shift);
                     return result;
                 }
             }
 
+            bytesRead = 0;
             return null;
         }
 

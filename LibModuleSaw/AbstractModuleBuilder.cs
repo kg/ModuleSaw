@@ -122,7 +122,9 @@ namespace ModuleSaw {
             using (var writer = new BinaryWriter(output, Encoding.UTF8, true)) {
                 writer.Write(Prologue);
 
-                writer.Write(subFormat);
+                var bytes = Encoding.UTF8.GetBytes(subFormat);
+                writer.Write(bytes.Length);
+                writer.Write(bytes);
 
                 writer.Write(BoundaryMarker1);
 

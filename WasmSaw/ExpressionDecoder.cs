@@ -13,7 +13,7 @@ namespace WasmSaw {
 
         public uint NumDecoded { get; private set; }
 
-        private AbstractModuleStreamReader OpcodeStream, GlobalIndices, LocalIndices,
+        private ArrayBinaryReader OpcodeStream, GlobalIndices, LocalIndices,
             MemoryImmediates, BrTables, BlockTypes,
             FunctionIndices, TypeIndices, BreakDepths;
 
@@ -32,7 +32,7 @@ namespace WasmSaw {
             BreakDepths = GetStream("break_depth");
         }
 
-        private AbstractModuleStreamReader GetStreamForOpcode (Opcodes opcode) {
+        private ArrayBinaryReader GetStreamForOpcode (Opcodes opcode) {
             switch (opcode) {
                 case Opcodes.br:
                 case Opcodes.br_if:
@@ -56,7 +56,11 @@ namespace WasmSaw {
         public bool Decode (
             out Expression e
         ) {
-            var opcode = (Opcodes)OpcodeStream.ReadByte();
+            if (!OpcodeStream.Read(out Opcodes opcode)) {
+                e = default(Expression);
+                return false;
+            }
+
             var stream = GetStreamForOpcode(opcode);
 
             e = new Expression {
@@ -75,7 +79,7 @@ namespace WasmSaw {
 
         private int Depth = 0;
 
-        private bool DecodeExpressionBody (ref Expression expr, AbstractModuleStreamReader stream) {
+        private bool DecodeExpressionBody (ref Expression expr, ArrayBinaryReader stream) {
             var u32 = stream ?? Reader.UIntStream;
             var i32 = stream ?? Reader.IntStream;
             var i64 = stream ?? Reader.LongStream;
@@ -98,7 +102,8 @@ namespace WasmSaw {
 
                     case Opcodes.block:
                     case Opcodes.loop:
-                        expr.Body.U.type = (LanguageTypes)BlockTypes.ReadByte();
+                        if (!BlockTypes.Read(out expr.Body.U.type))
+                            return false;
                         expr.Body.Type = ExpressionBody.Types.type;
 
                         if (!DecodeChildren(ref expr))
@@ -107,7 +112,8 @@ namespace WasmSaw {
                         break;
 
                     case Opcodes.@if:
-                        expr.Body.U.type = (LanguageTypes)BlockTypes.ReadByte();
+                        if (!BlockTypes.Read(out expr.Body.U.type))
+                            return false;
                         expr.Body.Type = ExpressionBody.Types.type;
 
                         if (!DecodeChildren(ref expr))
@@ -131,49 +137,61 @@ namespace WasmSaw {
                     case Opcodes.get_local:
                     case Opcodes.set_local:
                     case Opcodes.tee_local:
-                        expr.Body.U.u32 = u32.ReadUInt32();
+                        if (!u32.ReadU32LEB(out expr.Body.U.u32))
+                            return false;
+
                         expr.Body.Type = ExpressionBody.Types.u32;
 
                         break;
 
                     case Opcodes.br_table:
-                        var target_count = BrTables.ReadUInt32();
+                        if (!BrTables.ReadU32LEB(out uint target_count))
+                            return false;
+
                         var target_table = new uint[target_count];
                         for (var i = 0; i < target_count; i++)
-                            target_table[i] = BrTables.ReadUInt32();
+                            if (!BrTables.ReadU32LEB(out target_table[i]))
+                                return false;
 
                         expr.Body.br_table = new br_table_immediate {
-                            target_table = target_table,
-                            default_target = BrTables.ReadUInt32()
+                            target_table = target_table
                         };
+
+                        if (!BrTables.ReadU32LEB(out expr.Body.br_table.default_target))
+                            return false;
 
                         expr.Body.Type = ExpressionBody.Types.br_table;
                         break;
 
                     case Opcodes.call_indirect:
-                        expr.Body.U.u32 = u32.ReadUInt32();
+                        if (!u32.ReadU32LEB(out expr.Body.U.u32))
+                            return false;
                         expr.Body.Type = ExpressionBody.Types.u32;
                         // FIXME: reserved
 
                         break;
 
                     case Opcodes.i32_const:
-                        expr.Body.U.i32 = i32.ReadInt32();
+                        if (!i32.ReadI32LEB(out expr.Body.U.i32))
+                            return false;
                         expr.Body.Type = ExpressionBody.Types.i32;
                         break;
 
                     case Opcodes.i64_const:
-                        expr.Body.U.i64 = i64.ReadInt64();
+                        if (!i64.ReadI64LEB(out expr.Body.U.i64))
+                            return false;
                         expr.Body.Type = ExpressionBody.Types.i64;
                         break;
 
                     case Opcodes.f32_const:
-                        expr.Body.U.f32 = f32.ReadSingle();
+                        if (!f32.ReadF32(out expr.Body.U.f32))
+                            return false;
                         expr.Body.Type = ExpressionBody.Types.f32;
                         break;
 
                     case Opcodes.f64_const:
-                        expr.Body.U.f64 = f64.ReadDouble();
+                        if (!f64.ReadF64(out expr.Body.U.f64))
+                            return false;
                         expr.Body.Type = ExpressionBody.Types.f64;
                         break;
 
@@ -191,7 +209,8 @@ namespace WasmSaw {
                     case Opcodes.i64_load:
                     case Opcodes.f32_load:
                     case Opcodes.f64_load:
-                        DecodeMemoryImmediate(mem, out expr.Body);
+                        if (!DecodeMemoryImmediate(mem, out expr.Body))
+                            return false;
 
                         break;
 
@@ -204,7 +223,8 @@ namespace WasmSaw {
                     case Opcodes.i64_store:
                     case Opcodes.f32_store:
                     case Opcodes.f64_store:
-                        DecodeMemoryImmediate(mem, out expr.Body);
+                        if (!DecodeMemoryImmediate(mem, out expr.Body))
+                            return false;
 
                         break;
 
@@ -362,7 +382,8 @@ namespace WasmSaw {
 
                     case Opcodes.grow_memory:
                     case Opcodes.current_memory:
-                        expr.Body.U.u32 = (stream ?? Reader.ByteStream).ReadByte();
+                        if (!(stream ?? Reader.ByteStream).Read(out expr.Body.U.u8))
+                            return false;
                         expr.Body.Type = ExpressionBody.Types.u1;
                         break;
 
@@ -377,12 +398,13 @@ namespace WasmSaw {
             return true;
         }
 
-        private void DecodeMemoryImmediate (AbstractModuleStreamReader stream, out ExpressionBody body) {
+        private bool DecodeMemoryImmediate (ArrayBinaryReader stream, out ExpressionBody body) {
             body = new ExpressionBody {
                 Type = ExpressionBody.Types.memory
             };
-            body.U.memory.flags = stream.ReadUInt32();
-            body.U.memory.offset = stream.ReadUInt32();
+            if (!stream.ReadU32LEB(out body.U.memory.flags))
+                return false;
+            return stream.ReadU32LEB(out body.U.memory.offset);
         }
 
         private bool DecodeChildren (ref Expression parent) {
@@ -411,7 +433,7 @@ namespace WasmSaw {
             }
         }
 
-        private AbstractModuleStreamReader GetStream (string key) {
+        private ArrayBinaryReader GetStream (string key) {
             return Reader.Open(Reader.Streams[key]);
         }
     }

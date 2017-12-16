@@ -241,6 +241,8 @@ namespace Wasm.Model {
             [FieldOffset(0)]
             public uint u32;
             [FieldOffset(0)]
+            public byte u8;
+            [FieldOffset(0)]
             public long i64;
             [FieldOffset(0)]
             public int i32;

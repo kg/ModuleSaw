@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -21,7 +22,7 @@ namespace ModuleSaw {
             Data = data;
             Pin = GCHandle.Alloc(Data.Array, GCHandleType.Pinned);
             Length = length.GetValueOrDefault((uint)data.Count);
-            pStart = (byte*)Pin.AddrOfPinnedObject();
+            pStart = ((byte*)Pin.AddrOfPinnedObject()) + data.Offset;
             pEnd = pData + Length;
             pData = pStart + initialPosition.GetValueOrDefault(0);
         }
@@ -29,6 +30,11 @@ namespace ModuleSaw {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ArrayBinaryReader (byte[] data, uint offset, uint length)
             : this (new ArraySegment<byte>(data, (int)offset, (int)length)) {
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ArrayBinaryReader (byte[] data)
+            : this (new ArraySegment<byte>(data)) {
         }
 
         public uint Position {
@@ -67,6 +73,38 @@ namespace ModuleSaw {
                 result = *(pData++);
                 return true;
             }
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct ReadUnion<T> {
+            [FieldOffset(0)]
+            public fixed byte buffer[128];
+            [FieldOffset(0)]
+            public T value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        public bool Read<T> (out T result)
+            where T : struct {
+            var u = default(ReadUnion<T>);
+            var size = Marshal.SizeOf<T>();
+
+            if (
+                (size > 128) || 
+                !Read(u.buffer, (uint)size)
+            ) {
+                result = default(T);
+                return false;
+            }
+
+            result = u.value;
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Read (byte[] resultBuffer, uint? length = null) {
+            fixed (byte* pResult = resultBuffer)
+                return Read(pResult, length.GetValueOrDefault((uint)resultBuffer.Length));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -132,6 +170,14 @@ namespace ModuleSaw {
         public bool ReadF64 (out double result) {
             fixed (double* pResult = &result)
                 return Read(pResult, sizeof(double));
+        }
+
+        public bool CopyToStream (Stream destination, uint length) {
+            if (!Chomp(out byte* temp, length))
+                return false;
+
+            destination.Write(Data.Array, (int)(Data.Offset + (temp - pStart)), (int)length);
+            return true;
         }
 
         public void Dispose () {

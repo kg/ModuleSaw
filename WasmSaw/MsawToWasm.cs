@@ -23,30 +23,33 @@ namespace WasmSaw {
             var sectionIds = amr.Open(amr.Streams["section_id"]);
             var sectionNames = amr.Open(amr.Streams["section_name"]);
 
-            var sectionCount = (uint)sectionIds.Length;
+            var sectionCount = sectionIds.Length;
 
             using (var scratchBuffer = new MemoryStream(256000))
             using (var scratchWriter = new BinaryWriter(scratchBuffer, Encoding.UTF8))
             for (int i = 0; i < sectionCount; i++) {
                 scratchBuffer.SetLength(0);
 
-                var id = (SectionTypes)sectionIds.ReadSByte();
+                Check(sectionIds.Read(out SectionTypes id));
+                
                 string name = null;
-                if (id == 0)
-                    name = sectionNames.ReadString();
+                if (id == 0) {
+                    Check(sectionNames.ReadU32LEB(out uint nameLength));
+                    var nameBytes = new byte[nameLength];
+                    Check(sectionNames.Read(nameBytes));
+                    name = Encoding.UTF8.GetString(nameBytes);
+                }
 
                 writer.Write((sbyte)id);
 
                 if (((sbyte)id <= 0) || ((sbyte)id >= (sbyte)SectionTypes.Unknown)) {
                     var unknownSectionLengths = amr.Open(amr.Streams["unknown_section_length"]);
                     var unknownSectionData = amr.Open(amr.Streams["unknown_section_data"]);
-                    var length = unknownSectionLengths.ReadUInt32();
+
+                    Check(unknownSectionLengths.ReadU32LEB(out uint length));
                     
                     scratchWriter.Flush();
-                    using (var sw = new StreamWindow(unknownSectionData.BaseStream, unknownSectionData.BaseStream.Position, length))
-                        sw.CopyTo(scratchWriter.BaseStream);
-
-                    unknownSectionData.BaseStream.Seek(length, SeekOrigin.Current);
+                    unknownSectionData.CopyToStream(scratchWriter.BaseStream, length);
                 } else {
                     EmitSectionBody(amr, scratchWriter, id);
                     scratchWriter.Flush();
@@ -60,6 +63,11 @@ namespace WasmSaw {
             }
 
             writer.Dispose();
+        }
+
+        private static void Check (bool b) {
+            if (!b)
+                throw new EndOfStreamException();
         }
 
         private static void EmitSectionBody (
