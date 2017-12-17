@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,6 +11,8 @@ using Wasm.Model;
 namespace WasmSaw {
     public static class MsawToWasm {
         public static void Convert (Stream input, Stream output) {
+            var sw = Stopwatch.StartNew();
+
             input.Position = 0;
 
             var amr = new AbstractModuleReader(input);
@@ -64,6 +67,8 @@ namespace WasmSaw {
             }
 
             writer.Dispose();
+            sw.Stop();
+            Console.WriteLine("Elapsed: {0:00000.00}ms", sw.ElapsedMilliseconds);
         }
 
         private static void Check (bool b) {
