@@ -125,8 +125,8 @@ namespace WasmSaw {
                 }
 
                 Console.WriteLine(
-                    "{0}: Wrote {1} byte(s) (from {2}b of wasm) in {3} segment(s)", 
-                    (sh.id == SectionTypes.Custom) ? sh.name : sh.id.ToString(), amb.TotalSize - previousSize, sh.payload_len, amb.TotalSegmentCount
+                    "{0}: Wrote {1} byte(s) (from {2}b of wasm)", 
+                    (sh.id == SectionTypes.Custom) ? sh.name : sh.id.ToString(), amb.TotalSize - previousSize, sh.payload_len
                 );
             }
 

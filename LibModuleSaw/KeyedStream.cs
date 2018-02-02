@@ -80,14 +80,8 @@ namespace ModuleSaw {
             output.Write(Stream.Length);
         }
 
-        internal unsafe void WriteSegmentHeader (BinaryWriter output, Segment seg) {
-            WriteStreamName(output);
-            output.Write(seg.Index);
-            output.Write(seg.Length);
-        }
-
         internal void CreateNewSegment () {
-            Console.WriteLine($"Split {Key} at at length {CurrentSegmentLength}");
+            // Console.WriteLine($"Split {Key} at at length {CurrentSegmentLength}");
             SegmentStartOffsets.Add(Length);
         }
     }

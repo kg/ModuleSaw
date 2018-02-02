@@ -11,13 +11,17 @@ namespace ModuleSaw {
         internal struct SegmentEntry {
             public KeyedStreamWriter Stream;
             public int SegmentIndex;
+
+            public override string ToString () {
+                return $"{Stream.Key} #{SegmentIndex}";
+            }
         }
 
         public const uint BoundaryMarker1 = 0xDBCA1234,
             BoundaryMarker2 = 0xABCD9876,
             BoundaryMarker3 = 0x13579FCA;
 
-        public const uint MinimumSegmentSize = 40960;
+        public const uint MinimumSegmentSize = 20480;
 
         public static readonly byte[] Prologue = (new[] {
             '\x89', 'M', 'S', 'a', 'w', '\r', '\n', '\x1a', '\n', '\0'
@@ -163,19 +167,14 @@ namespace ModuleSaw {
                     var s = se.Stream;
                     s.Flush();
                     var seg = s.Segments.ElementAt(se.SegmentIndex);
-                    s.WriteSegmentHeader(writer, seg);
+                    var streamIndex = OrderedStreams.IndexOf(s);
+                    writer.Write(streamIndex);
+                    writer.Write(seg.Index);
+                    writer.Write(seg.Length);
                     using (var window = new StreamWindow(s.Stream, seg.Offset, seg.Length)) {
                         window.CopyTo(writer.BaseStream);
                         writer.Write(BoundaryMarker3);
                     }
-                }
-
-                foreach (var s in OrderedStreams) {
-                    s.Flush();
-                    s.Stream.Position = 0;
-                    s.Stream.CopyTo(writer.BaseStream);
-
-                    writer.Write(BoundaryMarker3);
                 }
 
                 writer.Flush();
