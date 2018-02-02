@@ -11,13 +11,25 @@ namespace ModuleSaw {
         public struct StreamTableHeader {
             public string Key;
             public uint   SegmentCount;
-            public ulong  StreamLength;
+            public uint   StreamLength;
+
+            public override string ToString () {
+                return $"{Key} {StreamLength}bytes {SegmentCount} segment(s)";
+            }
+        }
+
+        public struct SegmentHeader {
+            public uint StreamIndex;
+            public uint SegmentIndex;
+            public uint SegmentLength;
         }
 
         public class StreamList : IEnumerable<StreamTableHeader> {
             internal StreamTableHeader[] Headers;
             internal Dictionary<string, StreamTableHeader> Table =
                 new Dictionary<string, StreamTableHeader>(StringComparer.Ordinal);
+            internal Dictionary<string, ArrayBinaryReader> Readers =
+                new Dictionary<string, ArrayBinaryReader>(StringComparer.Ordinal);
 
             internal StreamList () {
             }
@@ -41,7 +53,14 @@ namespace ModuleSaw {
             }
 
             public ArrayBinaryReader Open (string key) {
-                throw new NotImplementedException();
+                ArrayBinaryReader result;
+                if (Readers.TryGetValue(key, out result))
+                    return result;
+
+                var header = Table[key];
+                var buffer = new byte[header.StreamLength];
+                Readers[key] = result = new ArrayBinaryReader(new ArraySegment<byte>(buffer), 0, header.StreamLength, 0);
+                return result;
             }
 
             public IEnumerator<StreamTableHeader> GetEnumerator () {
@@ -72,10 +91,11 @@ namespace ModuleSaw {
 
         public AbstractModuleReader (Stream input) {
             // This sucks :(
+            var length = (uint)input.Length;
             Bytes = new byte[input.Length];
             input.Read(Bytes, 0, (int)input.Length);
 
-            Reader = new ArrayBinaryReader(Bytes);
+            Reader = new ArrayBinaryReader(new ArraySegment<byte>(Bytes), 0, length, length);
         }
 
         private bool ReadPrologue () {
@@ -124,6 +144,41 @@ namespace ModuleSaw {
                 return false;
 
             PreopenStreams();
+
+            return true;
+        }
+
+        public bool ReadSegment () {
+            uint streamIndex, segmentIndex, segmentLength, marker;
+
+            var headerOk = Reader.Read(out streamIndex) &
+                Reader.Read(out segmentIndex) &
+                Reader.Read(out segmentLength);
+            if (!headerOk)
+                return false;
+
+            var streamHeader = Streams.Headers[streamIndex];
+            var streamReader = Streams.Open(streamHeader.Key);
+            var buffer = streamReader.Data.Array;
+            var readOffset = (uint)(streamReader.Data.Offset + streamReader.AvailableLength);
+            if (!Reader.Read(buffer, readOffset, segmentLength))
+                return false;
+
+            if (!Reader.Read(out marker))
+                return false;
+
+            if (marker != AbstractModuleBuilder.BoundaryMarker3)
+                return false;
+
+            streamReader.SetAvailableLength(streamReader.AvailableLength + segmentLength);
+            return true;
+        }
+
+        public bool ReadAllSegments () {
+            while (Reader.Position < Reader.Length) {
+                if (!ReadSegment())
+                    return false;
+            }
 
             return true;
         }

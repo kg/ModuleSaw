@@ -30,7 +30,7 @@ namespace WasmSaw {
 
                 if (j == splitInterval) {
                     j = 0;
-                    Builder.SplitSegments();
+                    Builder.SplitSegments(WasmToMsaw.MinimumSegmentSize);
                 }
             }
         }

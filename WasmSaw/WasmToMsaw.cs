@@ -9,7 +9,8 @@ using Wasm.Model;
 
 namespace WasmSaw {
     public static class WasmToMsaw {
-        public const int CodeSegmentSplitInterval = 511;
+        public const uint MinimumSegmentSize = 81920;
+        public const int CodeSegmentSplitInterval = 255;
         public const int DataSegmentSplitInterval = 0;
 
         public static void Convert (Stream input, Stream output) {

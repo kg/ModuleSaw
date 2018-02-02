@@ -11,6 +11,7 @@ namespace ModuleSaw {
     public unsafe class ArrayBinaryReader : IDisposable {
         public readonly ArraySegment<byte> Data;
         public readonly uint Length;
+        public uint AvailableLength { get; private set; }
 
         private GCHandle Pin;
         private byte* pData;
@@ -18,23 +19,22 @@ namespace ModuleSaw {
 
         public bool IsDisposed { get; private set; }
 
-        public ArrayBinaryReader (ArraySegment<byte> data, uint? initialPosition = null, uint? length = null) {
+        public ArrayBinaryReader (
+            ArraySegment<byte> data, 
+            uint initialPosition, uint length, uint availableLength
+        ) {
             Data = data;
             Pin = GCHandle.Alloc(Data.Array, GCHandleType.Pinned);
-            Length = length.GetValueOrDefault((uint)data.Count);
+            Length = length;
+            AvailableLength = availableLength;
             pStart = ((byte*)Pin.AddrOfPinnedObject()) + data.Offset;
-            pEnd = pStart + Length;
-            pData = pStart + initialPosition.GetValueOrDefault(0);
+            pEnd = pStart + AvailableLength;
+            pData = pStart + initialPosition;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArrayBinaryReader (byte[] data, uint offset, uint length)
-            : this (new ArraySegment<byte>(data, (int)offset, (int)length)) {
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArrayBinaryReader (byte[] data)
-            : this (new ArraySegment<byte>(data)) {
+        public void SetAvailableLength (uint newAvailableLength) {
+            AvailableLength = newAvailableLength;
+            pEnd = pStart + newAvailableLength;
         }
 
         public uint Position {
@@ -140,7 +140,19 @@ namespace ModuleSaw {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Read (byte[] resultBuffer, uint destinationOffset, uint length) {
+            if (length == 0)
+                return true;
+
+            fixed (byte* pResult = &resultBuffer[destinationOffset])
+                return Read(pResult, length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Read (void* resultBuffer, uint length) {
+            if (length == 0)
+                return true;
+
             var p = pData;
             pData += length;
 

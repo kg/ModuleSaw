@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 namespace ModuleSaw {
     public class KeyedStreamWriter : BinaryWriter {
         public struct Segment {
-            public int Index;
-            public long Offset;
-            public long Length;
+            public  int Index;
+            public uint Offset;
+            public uint Length;
         }
 
         public const uint MaxKeyLength = 48;
         public const uint HeaderSize = (sizeof(uint) * 2) + MaxKeyLength;
 
-        private readonly List<long> SegmentStartOffsets = new List<long> { 0 };
+        private readonly List<uint> SegmentStartOffsets = new List<uint> { 0 };
 
         public readonly string Key;
         public MemoryStream Stream { get; private set; }
@@ -35,17 +35,17 @@ namespace ModuleSaw {
             : this (key, new MemoryStream()) {
         }
 
-        public long Length => Stream.Length;
+        public uint Length => (uint)Stream.Length;
         public int SegmentCount => SegmentStartOffsets.Count;
-        public long CurrentSegmentLength => Stream.Length - SegmentStartOffsets.Last();
+        public uint CurrentSegmentLength => (uint)(Stream.Length - SegmentStartOffsets.Last());
 
         private Segment GetSegment (int index) {
             var segmentOffset = SegmentStartOffsets[index];
-            long segmentEndOffset;
+            uint segmentEndOffset;
             if (index < SegmentStartOffsets.Count - 1)
                 segmentEndOffset = SegmentStartOffsets[index + 1];
             else
-                segmentEndOffset = Stream.Length;
+                segmentEndOffset = (uint)Stream.Length;
 
             return new Segment {
                 Index = index,
@@ -76,8 +76,8 @@ namespace ModuleSaw {
 
         internal void WriteStreamTableHeader (BinaryWriter output) {
             WriteStreamName(output);
-            output.Write(SegmentStartOffsets.Count);
-            output.Write(Stream.Length);
+            output.Write((uint)SegmentStartOffsets.Count);
+            output.Write(Length);
         }
 
         internal void CreateNewSegment () {

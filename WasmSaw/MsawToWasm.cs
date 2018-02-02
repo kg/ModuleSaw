@@ -20,6 +20,8 @@ namespace WasmSaw {
 
             Program.Assert(amr.ReadHeader());
 
+            amr.ReadAllSegments();
+
             writer.Write((uint)0x6d736100);
             writer.Write((uint)1);
 

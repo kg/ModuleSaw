@@ -21,8 +21,6 @@ namespace ModuleSaw {
             BoundaryMarker2 = 0xABCD9876,
             BoundaryMarker3 = 0x13579FCA;
 
-        public const uint MinimumSegmentSize = 20480;
-
         public static readonly byte[] Prologue = (new[] {
             '\x89', 'M', 'S', 'a', 'w', '\r', '\n', '\x1a', '\n', '\0'
         }).Select(c => (byte)c).ToArray();
@@ -129,9 +127,9 @@ namespace ModuleSaw {
                 Write((uint)array.Length, ArrayLengthStream);
         }
 
-        public void SplitSegments () {
+        public void SplitSegments (uint minimumSegmentSize) {
             foreach (var s in OrderedStreams) {
-                if (s.CurrentSegmentLength < MinimumSegmentSize)
+                if (s.CurrentSegmentLength < minimumSegmentSize)
                     continue;
 
                 OrderedSegments.Add(new SegmentEntry {
@@ -168,8 +166,8 @@ namespace ModuleSaw {
                     s.Flush();
                     var seg = s.Segments.ElementAt(se.SegmentIndex);
                     var streamIndex = OrderedStreams.IndexOf(s);
-                    writer.Write(streamIndex);
-                    writer.Write(seg.Index);
+                    writer.Write((uint)streamIndex);
+                    writer.Write((uint)seg.Index);
                     writer.Write(seg.Length);
                     using (var window = new StreamWindow(s.Stream, seg.Offset, seg.Length)) {
                         window.CopyTo(writer.BaseStream);
