@@ -8,27 +8,27 @@ using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public class AbstractModuleReader {
-        public struct StreamHeader {
+        public struct StreamTableHeader {
             public string Key;
-            public uint   Offset;
-            public uint   Length;
+            public uint   SegmentCount;
+            public ulong  StreamLength;
         }
 
-        public class StreamList : IEnumerable<StreamHeader> {
-            internal StreamHeader[] Headers;
-            internal Dictionary<string, StreamHeader> Table =
-                new Dictionary<string, StreamHeader>(StringComparer.Ordinal);
+        public class StreamList : IEnumerable<StreamTableHeader> {
+            internal StreamTableHeader[] Headers;
+            internal Dictionary<string, StreamTableHeader> Table =
+                new Dictionary<string, StreamTableHeader>(StringComparer.Ordinal);
 
             internal StreamList () {
             }
 
-            public StreamHeader this [int index] {
+            public StreamTableHeader this [int index] {
                 get {
                     return Headers[index];
                 }
             }
 
-            public StreamHeader this [string key] {
+            public StreamTableHeader this [string key] {
                 get {
                     return Table[key];
                 }
@@ -40,12 +40,16 @@ namespace ModuleSaw {
                 }
             }
 
-            public IEnumerator<StreamHeader> GetEnumerator () {
-                return ((IEnumerable<StreamHeader>)Headers).GetEnumerator();
+            public ArrayBinaryReader Open (string key) {
+                throw new NotImplementedException();
+            }
+
+            public IEnumerator<StreamTableHeader> GetEnumerator () {
+                return ((IEnumerable<StreamTableHeader>)Headers).GetEnumerator();
             }
 
             IEnumerator IEnumerable.GetEnumerator () {
-                return ((IEnumerable<StreamHeader>)Headers).GetEnumerator();
+                return ((IEnumerable<StreamTableHeader>)Headers).GetEnumerator();
             }
         }
 
@@ -74,18 +78,6 @@ namespace ModuleSaw {
             Reader = new ArrayBinaryReader(Bytes);
         }
 
-        public ArrayBinaryReader Open (StreamHeader header) {
-            ArrayBinaryReader result;
-            if (!StreamCache.TryGetValue(header.Key, out result))
-                StreamCache[header.Key] = result = OpenNew(header);
-
-            return result;
-        }
-
-        public ArrayBinaryReader OpenNew (StreamHeader header) {
-            return new ArrayBinaryReader(Bytes, (uint)header.Offset, (uint)header.Length);
-        }
-
         private bool ReadPrologue () {
             var buffer = new byte[AbstractModuleBuilder.Prologue.Length];
             if (!Reader.Read(buffer))
@@ -95,13 +87,7 @@ namespace ModuleSaw {
         
         public bool ReadHeader () {
             if (!ReadPrologue())
-                return false;
-
-            if (!Reader.Read(out int subFormatLength))
-                return false;
-
-            if (!Reader.Seek(subFormatLength))
-                return false;
+                return false;            
 
             if (!Reader.Read(out uint temp) || 
                 (temp != AbstractModuleBuilder.BoundaryMarker1))
@@ -110,22 +96,22 @@ namespace ModuleSaw {
             if (!Reader.Read(out int streamCount))
                 return false;
 
-            var headers = new StreamHeader[streamCount];
-            var keyBuffer = new byte[KeyedStream.MaxKeyLength];
+            var headers = new StreamTableHeader[streamCount];
+            var keyBuffer = new byte[KeyedStreamWriter.MaxKeyLength];
             Streams.Table.Clear();
 
             for (int i = 0; i < streamCount; i++) {
                 if (!Reader.Read(keyBuffer))
                     return false;
 
-                headers[i] = new StreamHeader {
+                headers[i] = new StreamTableHeader {
                     Key = Encoding.UTF8.GetString(keyBuffer, 0, Array.IndexOf(keyBuffer, (byte)0))
                 };
 
-                if (!Reader.Read(out headers[i].Offset))
+                if (!Reader.Read(out headers[i].SegmentCount))
                     return false;
 
-                if (!Reader.Read(out headers[i].Length))
+                if (!Reader.Read(out headers[i].StreamLength))
                     return false;
 
                 Streams.Table.Add(headers[i].Key, headers[i]);
@@ -143,15 +129,15 @@ namespace ModuleSaw {
         }
 
         private void PreopenStreams () {
-            IntStream = Open(Streams["i32"]);
-            UIntStream = Open(Streams["u32"]);
-            LongStream = Open(Streams["i64"]);
-            ByteStream = Open(Streams["u8"]);
-            SingleStream = Open(Streams["f32"]);
-            DoubleStream = Open(Streams["f64"]);
-            BooleanStream = Open(Streams["u1"]);
-            ArrayLengthStream = Open(Streams["arrayLength"]);
-            StringLengthStream = Open(Streams["stringLength"]);
+            IntStream = Streams.Open("i32");
+            UIntStream = Streams.Open("u32");
+            LongStream = Streams.Open("i64");
+            ByteStream = Streams.Open("u8");
+            SingleStream = Streams.Open("f32");
+            DoubleStream = Streams.Open("f64");
+            BooleanStream = Streams.Open("u1");
+            ArrayLengthStream = Streams.Open("arrayLength");
+            StringLengthStream = Streams.Open("stringLength");
         }
 
         public string ReadString (ArrayBinaryReader stream) {

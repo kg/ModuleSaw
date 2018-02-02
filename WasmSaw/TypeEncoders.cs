@@ -23,10 +23,16 @@ namespace WasmSaw {
             get => ModuleEncoder.Builder;
         }
 
-        public void Encode (T[] array) {
+        public void Encode (T[] array, int splitInterval = int.MaxValue) {
             Builder.WriteArrayLength(array);
-            for (int i = 0; i < array.Length; i++)
+            for (int i = 0, j = 0; i < array.Length; i++, j++) {
                 Encode(ref array[i]);
+
+                if (j == splitInterval) {
+                    j = 0;
+                    Builder.SplitSegments();
+                }
+            }
         }
 
         public abstract void Encode (ref T value);
@@ -35,7 +41,7 @@ namespace WasmSaw {
             Encode(ref value);
         }
 
-        protected KeyedStream GetStream (string name) {
+        protected KeyedStreamWriter GetStream (string name) {
             return ModuleEncoder.Builder.GetStream(name);
         }
 
@@ -74,7 +80,7 @@ namespace WasmSaw {
         }
 
         public class SectionHeaderEncoder : TypeEncoder<SectionHeader> {
-            KeyedStream payload_lens, ids, names;
+            KeyedStreamWriter payload_lens, ids, names;
 
             public SectionHeaderEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 ids = GetStream("section_id");
@@ -91,7 +97,7 @@ namespace WasmSaw {
         }
 
         public class func_typeEncoder : TypeEncoder<func_type> {
-            KeyedStream types;
+            KeyedStreamWriter types;
 
             public func_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
                 types = GetStream("types");
@@ -106,7 +112,7 @@ namespace WasmSaw {
         }
 
         public class resizable_limitsEncoder : TypeEncoder<resizable_limits> {
-            KeyedStream flags, initials, maximums;
+            KeyedStreamWriter flags, initials, maximums;
 
             public resizable_limitsEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
                 flags = GetStream("rl_flag");
@@ -123,7 +129,7 @@ namespace WasmSaw {
         }
 
         public class table_typeEncoder : TypeEncoder<table_type> {
-            KeyedStream types;
+            KeyedStreamWriter types;
 
             public table_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
                 types = GetStream("element_type");
@@ -137,7 +143,7 @@ namespace WasmSaw {
         }
 
         public class global_typeEncoder : TypeEncoder<global_type> {
-            KeyedStream contentTypes, mutabilities;
+            KeyedStreamWriter contentTypes, mutabilities;
 
             public global_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
                 contentTypes = GetStream("content_type");
@@ -151,7 +157,7 @@ namespace WasmSaw {
         }
 
         public class memory_typeEncoder : TypeEncoder<memory_type> {
-            KeyedStream types;
+            KeyedStreamWriter types;
 
             public memory_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
             }
@@ -162,7 +168,7 @@ namespace WasmSaw {
         }
 
         public class import_entryEncoder : TypeEncoder<import_entry> {
-            KeyedStream modules, fields, kinds, functionIndices;
+            KeyedStreamWriter modules, fields, kinds, functionIndices;
 
             public import_entryEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 modules = GetStream("module");
@@ -196,7 +202,7 @@ namespace WasmSaw {
         }
 
         public class global_variableEncoder : TypeEncoder<global_variable> {
-            KeyedStream types;
+            KeyedStreamWriter types;
 
             public global_variableEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 types = GetStream("global_variable.type");
@@ -209,7 +215,7 @@ namespace WasmSaw {
         }
 
         public class export_entryEncoder : TypeEncoder<export_entry> {
-            KeyedStream fields, kinds, indices;
+            KeyedStreamWriter fields, kinds, indices;
 
             public export_entryEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 fields = GetStream("field");
@@ -225,7 +231,7 @@ namespace WasmSaw {
         }
 
         public class elem_segmentEncoder : TypeEncoder<elem_segment> {
-            KeyedStream indices;
+            KeyedStreamWriter indices;
 
             public elem_segmentEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 indices = GetStream("table_index");
@@ -241,7 +247,7 @@ namespace WasmSaw {
         }
 
         public class function_bodyEncoder : TypeEncoder<function_body> {
-            private KeyedStream locals, functionExpressionCounts;
+            private KeyedStreamWriter locals, functionExpressionCounts;
 
             public function_bodyEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
                 locals = GetStream("local_entry");

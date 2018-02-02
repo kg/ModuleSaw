@@ -435,7 +435,7 @@ namespace WasmSaw {
         }
 
         private ArrayBinaryReader GetStream (string key) {
-            return Reader.Open(Reader.Streams[key]);
+            return Reader.Streams.Open(key);
         }
     }
 }

@@ -8,24 +8,32 @@ using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public class AbstractModuleBuilder {
+        internal struct SegmentEntry {
+            public KeyedStreamWriter Stream;
+            public int SegmentIndex;
+        }
+
         public const uint BoundaryMarker1 = 0xDBCA1234,
             BoundaryMarker2 = 0xABCD9876,
             BoundaryMarker3 = 0x13579FCA;
+
+        public const uint MinimumSegmentSize = 40960;
 
         public static readonly byte[] Prologue = (new[] {
             '\x89', 'M', 'S', 'a', 'w', '\r', '\n', '\x1a', '\n', '\0'
         }).Select(c => (byte)c).ToArray();
 
-        public KeyedStream
+        public KeyedStreamWriter
             IntStream, UIntStream,
             LongStream, ByteStream,
             SingleStream, DoubleStream,
             BooleanStream, ArrayLengthStream,
             StringLengthStream;
 
-        private readonly Dictionary<string, KeyedStream> Streams = 
-            new Dictionary<string, KeyedStream>(StringComparer.Ordinal);
-        private readonly List<KeyedStream> OrderedStreams = new List<KeyedStream>();
+        private readonly Dictionary<string, KeyedStreamWriter> Streams = 
+            new Dictionary<string, KeyedStreamWriter>(StringComparer.Ordinal);
+        private readonly List<KeyedStreamWriter> OrderedStreams = new List<KeyedStreamWriter>();
+        private readonly List<SegmentEntry> OrderedSegments = new List<SegmentEntry>();
 
         public AbstractModuleBuilder () {
             LongStream = GetStream("i64");
@@ -48,39 +56,38 @@ namespace ModuleSaw {
             OrderedStreams.Add(s);
         }
 
-        public long TotalSize {
-            get {
-                return OrderedStreams.Sum(os => os.Length);
-            }
-        }
+        public long TotalSize => OrderedStreams.Sum(os => os.Length);
 
-        public KeyedStream GetStream<T> () {
+        public int TotalSegmentCount => OrderedSegments.Count;
+
+        public KeyedStreamWriter GetStream<T> () {
             return GetStream(typeof(T).FullName);
         }
 
-        public KeyedStream GetStream (string key) {
-            KeyedStream result;
+        public KeyedStreamWriter GetStream (string key) {
+            KeyedStreamWriter result;
             if (Streams.TryGetValue(key, out result))
                 return result;
 
-            result = new KeyedStream(key);
+            result = new KeyedStreamWriter(key);
             Streams[key] = result;
             OrderedStreams.Add(result);
+            OrderedSegments.Add(new SegmentEntry { Stream = result, SegmentIndex = 0 });
             return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write (long value, KeyedStream stream = null) {
+        public void Write (long value, KeyedStreamWriter stream = null) {
             (stream ?? LongStream).WriteLEB(value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write (int value, KeyedStream stream = null) {
+        public void Write (int value, KeyedStreamWriter stream = null) {
             (stream ?? IntStream).WriteLEB(value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write (uint value, KeyedStream stream = null) {
+        public void Write (uint value, KeyedStreamWriter stream = null) {
             (stream ?? UIntStream).WriteLEB(value);
         }
 
@@ -93,7 +100,7 @@ namespace ModuleSaw {
             ByteStream.Write(b);
         }
 
-        public void Write (string text, KeyedStream stream) {
+        public void Write (string text, KeyedStreamWriter stream) {
             if (text == null) {
                 StringLengthStream.WriteLEB((uint)0);
 
@@ -118,32 +125,50 @@ namespace ModuleSaw {
                 Write((uint)array.Length, ArrayLengthStream);
         }
 
-        public void SaveTo (Stream output, string subFormat) {
+        public void SplitSegments () {
+            foreach (var s in OrderedStreams) {
+                if (s.CurrentSegmentLength < MinimumSegmentSize)
+                    continue;
+
+                OrderedSegments.Add(new SegmentEntry {
+                    Stream = s,
+                    SegmentIndex = s.SegmentCount
+                });
+                s.CreateNewSegment();
+            }
+        }
+
+        public void SaveTo (Stream output) {
             using (var writer = new BinaryWriter(output, Encoding.UTF8, true)) {
                 writer.Write(Prologue);
 
-                var bytes = Encoding.UTF8.GetBytes(subFormat);
-                writer.Write(bytes.Length);
-                writer.Write(bytes);
-
                 writer.Write(BoundaryMarker1);
-
                 writer.Write(OrderedStreams.Count);
 
                 writer.Flush();
 
                 var startOfHeaders = (uint)writer.BaseStream.Position;
-                var headerSize = KeyedStream.HeaderSize;
+                var headerSize = KeyedStreamWriter.HeaderSize;
                 var endOfHeaders = startOfHeaders + (uint)(OrderedStreams.Count * headerSize) + 4;
 
                 var dataOffset = endOfHeaders;
 
-                foreach (var s in OrderedStreams) {
-                    s.WriteHeader(writer, dataOffset);
-                    dataOffset += (uint)s.Length + 4;
-                }
+                foreach (var s in OrderedStreams)
+                    s.WriteStreamTableHeader(writer);
 
                 writer.Write(BoundaryMarker2);
+                writer.Flush();
+
+                foreach (var se in OrderedSegments) {
+                    var s = se.Stream;
+                    s.Flush();
+                    var seg = s.Segments.ElementAt(se.SegmentIndex);
+                    s.WriteSegmentHeader(writer, seg);
+                    using (var window = new StreamWindow(s.Stream, seg.Offset, seg.Length)) {
+                        window.CopyTo(writer.BaseStream);
+                        writer.Write(BoundaryMarker3);
+                    }
+                }
 
                 foreach (var s in OrderedStreams) {
                     s.Flush();

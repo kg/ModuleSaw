@@ -23,8 +23,8 @@ namespace WasmSaw {
             writer.Write((uint)0x6d736100);
             writer.Write((uint)1);
 
-            var sectionIds = amr.Open(amr.Streams["section_id"]);
-            var sectionNames = amr.Open(amr.Streams["section_name"]);
+            var sectionIds = amr.Streams.Open("section_id");
+            var sectionNames = amr.Streams.Open("section_name");
 
             var sectionCount = sectionIds.Length;
 
@@ -47,8 +47,8 @@ namespace WasmSaw {
                 writer.Write((sbyte)id);
 
                 if (((sbyte)id <= 0) || ((sbyte)id >= (sbyte)SectionTypes.Unknown)) {
-                    var unknownSectionLengths = amr.Open(amr.Streams["unknown_section_length"]);
-                    var unknownSectionData = amr.Open(amr.Streams["unknown_section_data"]);
+                    var unknownSectionLengths = amr.Streams.Open("unknown_section_length");
+                    var unknownSectionData = amr.Streams.Open("unknown_section_data");
 
                     Check(unknownSectionLengths.ReadU32LEB(out uint length));
                     
@@ -115,7 +115,7 @@ namespace WasmSaw {
                     break;
 
                 default:
-                    Console.WriteLine("Not implemented: {0}", id);
+                    Console.WriteLine($"Not implemented: {id}");
                     break;
             }
         }
@@ -198,7 +198,7 @@ namespace WasmSaw {
             var count = amr.ReadArrayLength();
             writer.WriteLEB(count);
 
-            var indices = amr.Open(amr.Streams["function_index"]);
+            var indices = amr.Streams.Open("function_index");
 
             for (uint i = 0; i < count; i++) {
                 Check(indices.ReadU32LEB(out uint index));
@@ -323,7 +323,7 @@ namespace WasmSaw {
         private static void EmitCodeSection (
             AbstractModuleReader amr, BinaryWriter writer, TypeDecoders td
         ) {
-            var countStream = amr.Open(amr.Streams["function_expression_count"]);
+            var countStream = amr.Streams.Open("function_expression_count");
 
             var count = amr.ReadArrayLength();
             writer.WriteLEB(count);
@@ -365,7 +365,7 @@ namespace WasmSaw {
         private static void EmitDataSection (
             AbstractModuleReader amr, BinaryWriter writer, TypeDecoders td
         ) {
-            var dataStream = amr.Open(amr.Streams["data_segments"]);
+            var dataStream = amr.Streams.Open("data_segments");
 
             var count = amr.ReadArrayLength();
             writer.WriteLEB(count);

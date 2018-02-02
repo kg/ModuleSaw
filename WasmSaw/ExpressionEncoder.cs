@@ -10,7 +10,7 @@ namespace WasmSaw {
     public class ExpressionEncoder {
         public readonly AbstractModuleBuilder Builder;
 
-        private KeyedStream OpcodeStream, GlobalIndices, LocalIndices,
+        private KeyedStreamWriter OpcodeStream, GlobalIndices, LocalIndices,
             MemoryImmediates, BrTables, BlockTypes,
             FunctionIndices, TypeIndices, BreakDepths;
 
@@ -28,7 +28,7 @@ namespace WasmSaw {
             BreakDepths = builder.GetStream("break_depth");
         }
 
-        private KeyedStream GetStreamForOpcode (Opcodes opcode) {
+        private KeyedStreamWriter GetStreamForOpcode (Opcodes opcode) {
             switch (opcode) {
                 case Opcodes.br:
                 case Opcodes.br_if:
@@ -54,7 +54,7 @@ namespace WasmSaw {
         ) {
             OpcodeStream.Write((byte)e.Opcode);
 
-            KeyedStream s = GetStreamForOpcode(e.Opcode);
+            KeyedStreamWriter s = GetStreamForOpcode(e.Opcode);
 
             switch (e.Body.Type & ~ExpressionBody.Types.children) {
                 case ExpressionBody.Types.none:

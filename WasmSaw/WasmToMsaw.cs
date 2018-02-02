@@ -9,6 +9,9 @@ using Wasm.Model;
 
 namespace WasmSaw {
     public static class WasmToMsaw {
+        public const int CodeSegmentSplitInterval = 511;
+        public const int DataSegmentSplitInterval = 0;
+
         public static void Convert (Stream input, Stream output) {
             var amb = new AbstractModuleBuilder();
 
@@ -24,7 +27,7 @@ namespace WasmSaw {
                 StreamingConvert(reader, amb);
 
                 output.SetLength(0);
-                amb.SaveTo(output, "webassembly-v1");
+                amb.SaveTo(output);
             }
         }
 
@@ -92,13 +95,13 @@ namespace WasmSaw {
                     case SectionTypes.Code:
                         CodeSection cs;
                         Program.Assert(reader.ReadCodeSection(out cs));
-                        t.function_body.Encode(cs.bodies);
+                        t.function_body.Encode(cs.bodies, CodeSegmentSplitInterval);
                         break;
 
                     case SectionTypes.Data:
                         DataSection ds;
                         Program.Assert(reader.ReadDataSection(out ds));
-                        t.data_segment.Encode(ds.entries);
+                        t.data_segment.Encode(ds.entries, DataSegmentSplitInterval);
 
                         var dataStream = amb.GetStream("data_segments");
                         dataStream.Flush();
@@ -122,8 +125,8 @@ namespace WasmSaw {
                 }
 
                 Console.WriteLine(
-                    "{0}: Wrote {1} byte(s) (from {2}b of wasm)", 
-                    (sh.id == SectionTypes.Custom) ? sh.name : sh.id.ToString(), amb.TotalSize - previousSize, sh.payload_len
+                    "{0}: Wrote {1} byte(s) (from {2}b of wasm) in {3} segment(s)", 
+                    (sh.id == SectionTypes.Custom) ? sh.name : sh.id.ToString(), amb.TotalSize - previousSize, sh.payload_len, amb.TotalSegmentCount
                 );
             }
 
