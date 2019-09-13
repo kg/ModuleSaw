@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using ModuleSaw;
 
 namespace Wasm.Model {
-    public enum SectionTypes : sbyte {
+    public enum SectionTypes : byte {
         Custom = 0,
 
         Type = 1,
@@ -99,6 +99,8 @@ namespace Wasm.Model {
     }
 
     public struct function_body {
+        public uint Index;
+
         public uint body_size;
         public local_entry[] locals;
 

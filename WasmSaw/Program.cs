@@ -22,17 +22,25 @@ namespace WasmSaw {
 
             Console.WriteLine($"{args[0]} ...");
 
+            var sw = Stopwatch.StartNew();
+
             using (var inputFile = File.OpenRead(args[0]))
             using (var outputFile = File.OpenWrite(args[1])) {
                 outputFile.SetLength(0);
 
-                if (IsThisWasm(inputFile))
-                    WasmToMsaw.Convert(inputFile, outputFile);
-                else if (IsThisMsaw(inputFile))
+                if (IsThisWasm(inputFile)) {
+                    if (args[1].Contains(".csv"))
+                        WasmToMsaw.MeasureLocalSizes(inputFile, outputFile);
+                    else
+                        WasmToMsaw.Convert(inputFile, outputFile);
+                } else if (IsThisMsaw(inputFile))
                     MsawToWasm.Convert(inputFile, outputFile);
                 else
                     throw new Exception("Unrecognized input format");
             }
+
+            sw.Stop();
+            Console.WriteLine("Elapsed: {0:00000.00}ms", sw.ElapsedMilliseconds);
 
             Console.WriteLine(args[1]);
 

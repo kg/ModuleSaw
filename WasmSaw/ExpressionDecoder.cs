@@ -62,6 +62,9 @@ namespace WasmSaw {
             }
 
             var opcode = (Opcodes)b;
+            int temp;
+            if (int.TryParse(opcode.ToString(), out temp))
+                ;
             var stream = GetStreamForOpcode(opcode);
 
             e = new Expression {

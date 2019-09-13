@@ -31,10 +31,7 @@ namespace Wasm.Model {
         public bool ReadSectionHeader (out SectionHeader sh) {
             sh = default(SectionHeader);
 
-            var id = Reader.ReadLEBInt();
-            if (!id.HasValue)
-                return false;
-
+            var id = Reader.ReadByte();
             sh.id = (SectionTypes)id;
 
             var position = Reader.BaseStream.Position;
@@ -48,13 +45,13 @@ namespace Wasm.Model {
 
             sh.StreamHeaderStart = position;
             sh.StreamPayloadStart = Reader.BaseStream.Position;
-            sh.StreamPayloadEnd = position + sh.payload_len;
+            sh.StreamPayloadEnd = sh.StreamPayloadStart + sh.payload_len;
 
             // FIXME
             return true;
         }
 
-        private TItem[] ReadList<TItem> (Func<uint, TItem> readItem) {
+        public TItem[] ReadList<TItem> (Func<uint, TItem> readItem) {
             var count = Reader.ReadLEBUInt();
             if (!count.HasValue)
                 return null;
@@ -224,6 +221,7 @@ namespace Wasm.Model {
                 var codeEnd = bodyOffset + bodySize;
 
                 var result = new function_body {
+                    Index = i,
                     Stream = Reader.BaseStream,
                     body_size = (uint)bodySize,
                     locals = localEntries,

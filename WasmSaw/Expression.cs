@@ -214,6 +214,10 @@ namespace Wasm.Model {
 
         public Opcodes Opcode;
         public ExpressionBody Body;
+
+        public override string ToString () {
+            return string.Format("({0} {1})", Opcode, Body);
+        }
     }
 
     public struct ExpressionBody {
@@ -261,6 +265,30 @@ namespace Wasm.Model {
         public Union U;
         public br_table_immediate br_table;
         public List<Expression> children;
+
+        private object ExtractValue () {
+            switch (Type) {
+                case Types.u32:
+                    return U.u32;
+                case Types.i32:
+                    return U.i32;
+                case Types.i64:
+                    return U.i64;
+                case Types.f32:
+                    return U.f32;
+                case Types.f64:
+                    return U.f64;
+                default:
+                    return "<unknown>";
+            }
+        }
+
+        public override string ToString () {
+            if (Type == Types.none)
+                return "";
+
+            return string.Format("({0} {1})", Type, ExtractValue());
+        }
     }
 
     public struct br_table_immediate {
