@@ -31,8 +31,12 @@ namespace Wasm.Model {
         public bool ReadSectionHeader (out SectionHeader sh) {
             sh = default(SectionHeader);
 
-            var id = Reader.ReadByte();
-            sh.id = (SectionTypes)id;
+            try {
+                var id = Reader.ReadByte();
+                sh.id = (SectionTypes)id;
+            } catch (EndOfStreamException) {
+                return false;
+            }
 
             var position = Reader.BaseStream.Position;
 
