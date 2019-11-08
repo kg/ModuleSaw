@@ -42,7 +42,7 @@ namespace WasmSaw {
             input.CopyTo(inputMs);
             inputMs.Position = 0;
 
-            var data = new List<(uint index, int paramCount, int localCount, int managedSize, int linearSize)>();
+            var data = new List<(uint index, int paramCount, int localCount, int managedSize, int linearSize, uint bodySize)>();
             func_type[] types = null;
             uint[] typeIndices = null;
             (uint, string)[] nameTable = null;
@@ -85,7 +85,7 @@ namespace WasmSaw {
 
                         case SectionTypes.Code:
                             CodeSection cs;
-                            writer.WriteLine("func_index, param_count, local_count, managed_frame_size, linear_frame_size");
+                            writer.WriteLine("func_index, body_size, param_count, local_count, managed_frame_size, linear_frame_size");
                             Program.Assert(reader.ReadCodeSection(out cs, (fb, br) => {
                                 var localsSize = 0;
                                 var numLocals = 0;
@@ -99,7 +99,7 @@ namespace WasmSaw {
                                 }
                                 var linearStackSize = GetLinearStackSizeForFunction(fb, type, br, writer);
 
-                                data.Add((fb.Index, type.param_types.Length, numLocals, localsSize, linearStackSize));
+                                data.Add((fb.Index, type.param_types.Length, numLocals, localsSize, linearStackSize, fb.body_size));
                             }));
                             break;
 
@@ -130,7 +130,7 @@ namespace WasmSaw {
 
                     if (rec.linearSize >= 250000)
                         Debugger.Break();
-                    writer.WriteLine($"{name},{rec.paramCount},{rec.localCount},{rec.managedSize},{rec.linearSize}");
+                    writer.WriteLine($"{name},{rec.bodySize},{rec.paramCount},{rec.localCount},{rec.managedSize},{rec.linearSize}");
                 }
             }
         }
