@@ -42,14 +42,17 @@ namespace Wasm.Model {
 
             sh.payload_len = (uint)Reader.ReadLEBUInt();
 
-            if (sh.id == 0)
+            int garbageLength = 0;
+            if (sh.id == 0) {
+                var position2 = Reader.BaseStream.Position;
                 sh.name = Reader.ReadPString();
-            else
+                garbageLength = (int)(Reader.BaseStream.Position - position2);
+            } else
                 sh.name = null;
 
             sh.StreamHeaderStart = position;
             sh.StreamPayloadStart = Reader.BaseStream.Position;
-            sh.StreamPayloadEnd = sh.StreamPayloadStart + sh.payload_len;
+            sh.StreamPayloadEnd = sh.StreamPayloadStart + sh.payload_len - garbageLength;
 
             // FIXME
             return true;
