@@ -81,7 +81,7 @@ namespace WasmSaw {
                 case ExpressionBody.Types.memory:
                     if (s == null)
                         s = MemoryImmediates;
-                    Builder.Write(e.Body.U.memory.flags, s);
+                    Builder.Write(e.Body.U.memory.alignment_exponent, s);
                     Builder.Write(e.Body.U.memory.offset, s);
                     break;
                 case ExpressionBody.Types.type:

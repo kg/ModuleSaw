@@ -406,7 +406,7 @@ namespace WasmSaw {
             body = new ExpressionBody {
                 Type = ExpressionBody.Types.memory
             };
-            if (!stream.ReadU32LEB(out body.U.memory.flags))
+            if (!stream.ReadU32LEB(out body.U.memory.alignment_exponent))
                 return false;
             return stream.ReadU32LEB(out body.U.memory.offset);
         }

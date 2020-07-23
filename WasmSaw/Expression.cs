@@ -297,7 +297,7 @@ namespace Wasm.Model {
     }
 
     public struct memory_immediate {
-        public uint flags;
+        public uint alignment_exponent;
         public uint offset;
     }
 

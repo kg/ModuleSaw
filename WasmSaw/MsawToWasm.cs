@@ -257,7 +257,7 @@ namespace WasmSaw {
                     writer.Write(e.Body.U.f32);
                     break;
                 case ExpressionBody.Types.memory:
-                    writer.WriteLEB(e.Body.U.memory.flags);
+                    writer.WriteLEB(e.Body.U.memory.alignment_exponent);
                     writer.WriteLEB(e.Body.U.memory.offset);
                     break;
                 case ExpressionBody.Types.type:

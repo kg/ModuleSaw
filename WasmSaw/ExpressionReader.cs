@@ -7,6 +7,14 @@ using System.Threading.Tasks;
 using ModuleSaw;
 
 namespace Wasm.Model {
+    public interface ExpressionReaderListener {
+        void BeginHeader ();
+        void EndHeader (ref Expression expression, bool successful);
+
+        void BeginBody (ref Expression expression, bool readingChildNodes);
+        void EndBody (ref Expression expression, bool readChildNodes, bool successful);
+    }
+
     public class ExpressionReader {
         public readonly BinaryReader Reader;
         public uint NumRead { get; private set; }
@@ -44,21 +52,25 @@ namespace Wasm.Model {
             return (Reader.ReadByte() == (byte)Opcodes.end);
         }
 
-        public bool TryReadExpression (out Expression result) {
+        public bool TryReadExpression (out Expression result, ExpressionReaderListener listener = null) {
+            listener?.BeginHeader();
             result = default(Expression);
 
-            if (BaseStream.Position >= BaseStreamLength)
+            if (BaseStream.Position >= BaseStreamLength) {
+                listener?.EndHeader(ref result, false);
                 return false;
+            }
 
             result.Opcode = (Opcodes)Reader.ReadByte();
             result.State = ExpressionState.BodyNotRead;
 
             NumRead += 1;
 
+            listener?.EndHeader(ref result, true);
             return true;
         }
 
-        private bool GatherChildNodesUntil (ref ExpressionBody body, Predicate<Expression> pred) {
+        private bool GatherChildNodesUntil (ref ExpressionBody body, Predicate<Expression> pred, ExpressionReaderListener listener = null) {
             // Reduce number of allocations
             body.children = new List<Expression>(16);
             body.Type |= ExpressionBody.Types.children;
@@ -67,9 +79,9 @@ namespace Wasm.Model {
 
             while (true) {
                 Expression e;
-                if (!TryReadExpression(out e))
+                if (!TryReadExpression(out e, listener))
                     return false;
-                if (!TryReadExpressionBody(ref e))
+                if (!TryReadExpressionBody(ref e, listener))
                     return false;
 
                 body.children.Add(e);
@@ -81,12 +93,62 @@ namespace Wasm.Model {
 
         private int Depth = 0;
 
-        public bool TryReadExpressionBody (ref Expression expr) {
+        public bool TryReadExpressionBody (ref Expression expr, ExpressionReaderListener listener = null) {
             if (expr.State == ExpressionState.Uninitialized)
                 throw new ArgumentException("Uninitialized expression");
 
+            var didReadChildNodes = false;
             Depth += 1;
             try {
+                switch (expr.Opcode) {
+                    case Opcodes.block:
+                    case Opcodes.loop:
+                        listener?.BeginBody(ref expr, true);
+                        didReadChildNodes = true;
+
+                        expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
+                        expr.Body.Type = ExpressionBody.Types.type;
+
+                        if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end, listener)) {
+                            listener?.EndBody(ref expr, true, false);
+                            return false;
+                        }
+
+                        break;
+
+                    case Opcodes.@if:
+                        listener?.BeginBody(ref expr, true);
+                        didReadChildNodes = true;
+
+                        expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
+                        expr.Body.Type = ExpressionBody.Types.type;
+
+                        if (!GatherChildNodesUntil(
+                            ref expr.Body, 
+                            e => (e.Opcode == Opcodes.end) || (e.Opcode == Opcodes.@else),
+                            listener
+                        )) {
+                            listener?.EndBody(ref expr, true, false);
+                            return false;
+                        }
+
+                        break;
+
+                    case Opcodes.@else:
+                        listener?.BeginBody(ref expr, true);
+                        didReadChildNodes = true;
+
+                        if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end, listener)) {
+                            listener?.EndBody(ref expr, true, false);
+                            return false;
+                        }
+
+                        break;
+                }
+
+                if (!didReadChildNodes)
+                    listener?.BeginBody(ref expr, false);
+
                 switch (expr.Opcode) {
                     case Opcodes.nop:
                     case Opcodes.unreachable:
@@ -94,34 +156,6 @@ namespace Wasm.Model {
                     case Opcodes.@return:
                     case Opcodes.drop:
                     case Opcodes.select:
-                        break;
-
-                    case Opcodes.block:
-                    case Opcodes.loop:
-                        expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
-                        expr.Body.Type = ExpressionBody.Types.type;
-
-                        if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end))
-                            return false;
-
-                        break;
-
-                    case Opcodes.@if:
-                        expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
-                        expr.Body.Type = ExpressionBody.Types.type;
-
-                        if (!GatherChildNodesUntil(
-                            ref expr.Body, 
-                            e => (e.Opcode == Opcodes.end) || (e.Opcode == Opcodes.@else))
-                        )
-                            return false;
-
-                        break;
-
-                    case Opcodes.@else:
-                        if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end))
-                            return false;
-
                         break;
 
                     case Opcodes.call:
@@ -194,8 +228,10 @@ namespace Wasm.Model {
                     case Opcodes.f32_load:
                     case Opcodes.f64_load:
                         expr.Body.Type = ExpressionBody.Types.memory;
-                        if (!ReadMemoryImmediate(out expr.Body.U.memory))
+                        if (!ReadMemoryImmediate(out expr.Body.U.memory)) {
+                            listener?.EndBody(ref expr, false, false);
                             return false;
+                        }
 
                         break;
 
@@ -209,8 +245,10 @@ namespace Wasm.Model {
                     case Opcodes.f32_store:
                     case Opcodes.f64_store:
                         expr.Body.Type = ExpressionBody.Types.memory;
-                        if (!ReadMemoryImmediate(out expr.Body.U.memory))
+                        if (!ReadMemoryImmediate(out expr.Body.U.memory)) {
+                            listener?.EndBody(ref expr, false, false);
                             return false;
+                        }
 
                         break;
 
@@ -373,18 +411,25 @@ namespace Wasm.Model {
                         break;
 
                     default:
-                        return false;
+                        if (!didReadChildNodes)
+                            return false;
+                        else
+                            break;
                 }
 
                 expr.State = ExpressionState.Initialized;
+                listener?.EndBody(ref expr, didReadChildNodes, true);
                 return true;
+            } catch (Exception exc) {
+                listener?.EndBody(ref expr, didReadChildNodes, false);
+                throw;
             } finally {
                 Depth -= 1;
             }
         }
 
         public bool ReadMemoryImmediate (out memory_immediate memory) {
-            memory.flags = (uint)Reader.ReadLEBUInt();
+            memory.alignment_exponent = (uint)Reader.ReadLEBUInt();
             memory.offset = (uint)Reader.ReadLEBUInt();
             return true;
         }
