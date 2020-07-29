@@ -14,6 +14,10 @@ namespace WasmSaw {
             MemoryAlignments, MemoryOffsets, BrTables, BlockTypes,
             FunctionIndices, TypeIndices, BreakDepths;
 
+        // [prev, current, next, default(Expression)]
+        private Expression[] WriteQueue = new Expression[4];
+        private int WriteQueueLength = 0;
+
         public ExpressionEncoder (AbstractModuleBuilder builder) {
             Builder = builder;
 
@@ -70,7 +74,7 @@ namespace WasmSaw {
             */
         }
 
-        public void Write (
+        private void WriteInternal (
             ref Expression e
         ) {
             OpcodeStream.Write((byte)e.Opcode);
@@ -120,6 +124,21 @@ namespace WasmSaw {
             }
 
             if ((e.Body.Type & ExpressionBody.Types.children) != 0) {
+                // HACK: The children were already pushed into the queue, so ignore them
+                /*
+                for (int i = 0, l = e.Body.children.Count; i < l; i++)
+                    Write(e.Body.children[i]);
+                */
+            }
+        }
+
+        public void Write (ref Expression e) {
+            FlushQueue(WriteQueue, ref WriteQueueLength, false);
+            WriteQueue[WriteQueueLength++] = e;
+
+            if ((e.Body.Type & ExpressionBody.Types.children) != 0) {
+                // Insert the children directly into the queue so they can be processed by the
+                //  peephole optimizer.
                 for (int i = 0, l = e.Body.children.Count; i < l; i++)
                     Write(e.Body.children[i]);
             }
@@ -127,6 +146,125 @@ namespace WasmSaw {
 
         public void Write (Expression e) {
             Write(ref e);
+        }
+
+        private void PeepholeOptimize (ref Expression previous, ref Expression current, ref Expression next) {
+            switch (previous.Opcode) {
+                case Opcodes.set_local: {
+                    if (
+                        (current.Opcode == Opcodes.get_local) &&
+                        (current.Body.U.u32 == previous.Body.U.u32)
+                    ) {
+                        current = new Expression {
+                            Opcode = ExpressionEncoder.FakeOpcodes.dup,
+                            Body = {
+                                Type = ExpressionBody.Types.none
+                            }
+                        };
+                        return;
+                    }
+                    break;
+                }
+                // We could generate dup for set/get global pairs but they don't seem to actually show up
+                /* you'd think this would help, but brotli is smarter
+                case Opcodes.get_local: {
+                    if (
+                        (
+                            (e.Opcode == Opcodes.i32_load) ||
+                            (e.Opcode == Opcodes.i32_store)
+                        ) &&
+                        (e.Body.U.memory.alignment_exponent == 2)
+                    ) {
+                        Write(new Expression {
+                            Opcode = (e.Opcode == Opcodes.i32_load) 
+                                ? FakeOpcodes.i32_load_relative
+                                : FakeOpcodes.i32_store_relative,
+                            Body = {
+                                Type = ExpressionBody.Types.u32,
+                                U = {
+                                    u32 = e.Body.U.memory.offset
+                                }
+                            }
+                        });
+                        return true;
+                    }
+                    break;
+                }
+                */
+            }
+
+            var naturalOps = new Dictionary<Opcodes, Opcodes> {
+                { Opcodes.i32_load, ExpressionEncoder.FakeOpcodes.i32_load_natural },
+                { Opcodes.i32_store, ExpressionEncoder.FakeOpcodes.i32_store_natural }
+            };
+
+            switch (current.Opcode) {
+                case Opcodes.i32_load:
+                case Opcodes.i32_store:
+                    if (current.Body.U.memory.alignment_exponent == 2) {
+                        current = new Expression {
+                            Opcode = naturalOps[current.Opcode],
+                            Body = {
+                                Type = ExpressionBody.Types.u32,
+                                U = {
+                                    u32 = current.Body.U.memory.offset
+                                }
+                            }
+                        };
+                        return;
+                    }
+                    break;
+                /*
+                case Opcodes.i32_const:
+                    if (
+                        (next.Opcode == Opcodes.set_local) &&
+                        (current.Body.U.i32 == 0)
+                    ) {
+                        Write(new Expression {
+                            Opcode = ExpressionEncoder.FakeOpcodes.zero_local,
+                            Body = next.Body
+                        });
+                        return 2;
+                    }
+                    break;
+                */
+            }
+        }
+
+        private void FlushQueue (Expression[] queue, ref int queue_length, bool force) {
+            if (queue_length == 0)
+                return;
+
+            if (queue_length > 3)
+                throw new Exception();
+
+            if ((queue_length == 3) || force) {
+                // HACK: queue[3] is always default(Expression) to give us an easy way
+                //  to indirectly reference it
+                PeepholeOptimize(ref queue[3], ref queue[0], ref queue[1]);
+                WriteInternal(ref queue[0]);
+
+                for (int i = 1; i < queue_length; i++) {
+                    PeepholeOptimize(ref queue[i - 1], ref queue[i], ref queue[i + 1]);
+
+                    // FIXME: Is this valid?
+                    /*
+                    if (queue[i].Opcode == Opcodes.nop)
+                        continue;
+                    */
+
+                    WriteInternal(ref queue[i]);
+                }
+
+                queue_length = 0;
+
+                for (int i = 0; i < queue.Length; i++)
+                    queue[i] = default(Expression);
+            }
+        }
+
+        internal void Flush () {
+            FlushQueue(WriteQueue, ref WriteQueueLength, true);
         }
     }
 }
