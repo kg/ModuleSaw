@@ -67,7 +67,7 @@ namespace WasmSaw {
             public const Opcodes dup = (Opcodes)(FirstFakeOpcode + 0);
             public const Opcodes i32_load_natural = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_natural = (Opcodes)(FirstFakeOpcode + 2);
-            public const Opcodes zero_local = (Opcodes)(FirstFakeOpcode + 3);
+            public const Opcodes ldc_i32_zero = (Opcodes)(FirstFakeOpcode + 3);
             /*
             public const Opcodes i32_load_relative = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_relative = (Opcodes)(FirstFakeOpcode + 2);
@@ -149,6 +149,9 @@ namespace WasmSaw {
         }
 
         private void PeepholeOptimize (ref Expression previous, ref Expression current, ref Expression next) {
+            if (current.Opcode == Opcodes.end)
+                return;
+
             switch (previous.Opcode) {
                 case Opcodes.set_local: {
                     if (
@@ -194,8 +197,8 @@ namespace WasmSaw {
             }
 
             var naturalOps = new Dictionary<Opcodes, Opcodes> {
-                { Opcodes.i32_load, ExpressionEncoder.FakeOpcodes.i32_load_natural },
-                { Opcodes.i32_store, ExpressionEncoder.FakeOpcodes.i32_store_natural }
+                { Opcodes.i32_load,  FakeOpcodes.i32_load_natural },
+                { Opcodes.i32_store, FakeOpcodes.i32_store_natural }
             };
 
             switch (current.Opcode) {
@@ -214,20 +217,17 @@ namespace WasmSaw {
                         return;
                     }
                     break;
-                /*
+                // /* surprisingly, this is worse! (not by much, though)
                 case Opcodes.i32_const:
-                    if (
-                        (next.Opcode == Opcodes.set_local) &&
-                        (current.Body.U.i32 == 0)
-                    ) {
-                        Write(new Expression {
-                            Opcode = ExpressionEncoder.FakeOpcodes.zero_local,
-                            Body = next.Body
-                        });
-                        return 2;
+                    if (current.Body.U.i32 == 0) {
+                        current = new Expression {
+                            Opcode = FakeOpcodes.ldc_i32_zero,
+                            Body = default(ExpressionBody)
+                        };
+                        return;
                     }
                     break;
-                */
+                // */
             }
         }
 
@@ -248,10 +248,8 @@ namespace WasmSaw {
                     PeepholeOptimize(ref queue[i - 1], ref queue[i], ref queue[i + 1]);
 
                     // FIXME: Is this valid?
-                    /*
                     if (queue[i].Opcode == Opcodes.nop)
                         continue;
-                    */
 
                     WriteInternal(ref queue[i]);
                 }
