@@ -45,6 +45,14 @@ namespace WasmSaw {
                     return FunctionIndices;
                 case Opcodes.call_indirect:
                     return TypeIndices;
+                case FakeOpcodes.i32_load_natural:
+                case FakeOpcodes.i32_store_natural:
+                    return MemoryOffsets;
+                /*
+                case FakeOpcodes.i32_load_relative:
+                case FakeOpcodes.i32_store_relative:
+                    return MemoryOffsets;
+                */
             }
 
             return null;
@@ -53,69 +61,18 @@ namespace WasmSaw {
         public static class FakeOpcodes {
             public const byte FirstFakeOpcode = 0xF0;
             public const Opcodes dup = (Opcodes)(FirstFakeOpcode + 0);
+            public const Opcodes i32_load_natural = (Opcodes)(FirstFakeOpcode + 1);
+            public const Opcodes i32_store_natural = (Opcodes)(FirstFakeOpcode + 2);
+            public const Opcodes zero_local = (Opcodes)(FirstFakeOpcode + 3);
             /*
             public const Opcodes i32_load_relative = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_relative = (Opcodes)(FirstFakeOpcode + 2);
             */
         }
 
-        // Return true to suppress emitting this opcode (because we emitted other ones)
-        private bool PeepholeOptimize (ref Expression e) {
-            switch (PreviousExpression.Opcode) {
-                case Opcodes.set_local: {
-                    if (
-                        (e.Opcode == Opcodes.get_local) &&
-                        (e.Body.U.u32 == PreviousExpression.Body.U.u32)
-                    ) {
-                        Write(new Expression {
-                            Opcode = FakeOpcodes.dup,
-                            Body = {
-                                Type = ExpressionBody.Types.none
-                            }
-                        });
-                        return true;
-                    }
-                    break;
-                }
-                /* you'd think this would help, but brotli is smarter
-                case Opcodes.get_local: {
-                    if (
-                        (
-                            (e.Opcode == Opcodes.i32_load) ||
-                            (e.Opcode == Opcodes.i32_store)
-                        ) &&
-                        (e.Body.U.memory.alignment_exponent == 2)
-                    ) {
-                        Write(new Expression {
-                            Opcode = (e.Opcode == Opcodes.i32_load) 
-                                ? FakeOpcodes.i32_load_relative
-                                : FakeOpcodes.i32_store_relative,
-                            Body = {
-                                Type = ExpressionBody.Types.u32,
-                                U = {
-                                    u32 = e.Body.U.memory.offset
-                                }
-                            }
-                        });
-                        return true;
-                    }
-                    break;
-                }
-                */
-            }
-
-            return false;
-        }
-
-        private Expression PreviousExpression;
-
         public void Write (
             ref Expression e
         ) {
-            if (PeepholeOptimize(ref e))
-                return;
-
-            PreviousExpression = e;
             OpcodeStream.Write((byte)e.Opcode);
 
             KeyedStreamWriter s = GetStreamForOpcode(e.Opcode);
