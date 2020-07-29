@@ -391,10 +391,12 @@ namespace WasmSaw {
                         expr.Body.Type = ExpressionBody.Types.u1;
                         break;
 
-                    // FIXME: Implement fake opcodes
+                    default: {
+                        if (expr.Opcode >= (Opcodes)ExpressionEncoder.FakeOpcodes.FirstFakeOpcode)
+                            throw new Exception($"Unimplemented fake opcode {expr.Opcode}");
 
-                    default:
                         return false;
+                    }
                 }
             } finally {
                 Depth -= 1;

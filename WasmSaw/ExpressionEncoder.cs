@@ -68,6 +68,7 @@ namespace WasmSaw {
             public const Opcodes i32_load_natural = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_natural = (Opcodes)(FirstFakeOpcode + 2);
             public const Opcodes ldc_i32_zero = (Opcodes)(FirstFakeOpcode + 3);
+            public const Opcodes ldc_i32_one = (Opcodes)(FirstFakeOpcode + 4);
             /*
             public const Opcodes i32_load_relative = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_relative = (Opcodes)(FirstFakeOpcode + 2);
@@ -219,9 +220,15 @@ namespace WasmSaw {
                     break;
                 // /* surprisingly, this is worse! (not by much, though)
                 case Opcodes.i32_const:
-                    if (current.Body.U.i32 == 0) {
+                    if (
+                        (current.Body.U.i32 == 0) ||
+                        (current.Body.U.i32 == 1)
+                    ) {
                         current = new Expression {
-                            Opcode = FakeOpcodes.ldc_i32_zero,
+                            Opcode = 
+                                current.Body.U.i32 == 0
+                                    ? FakeOpcodes.ldc_i32_zero
+                                    : FakeOpcodes.ldc_i32_one,
                             Body = default(ExpressionBody)
                         };
                         return;
