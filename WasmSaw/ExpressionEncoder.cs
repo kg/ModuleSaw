@@ -69,6 +69,7 @@ namespace WasmSaw {
             public const Opcodes i32_store_natural = (Opcodes)(FirstFakeOpcode + 2);
             public const Opcodes ldc_i32_zero = (Opcodes)(FirstFakeOpcode + 3);
             public const Opcodes ldc_i32_one = (Opcodes)(FirstFakeOpcode + 4);
+            public const Opcodes ldc_i32_minus_one = (Opcodes)(FirstFakeOpcode + 5);
             /*
             public const Opcodes i32_load_relative = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_relative = (Opcodes)(FirstFakeOpcode + 2);
@@ -202,6 +203,12 @@ namespace WasmSaw {
                 { Opcodes.i32_store, FakeOpcodes.i32_store_natural }
             };
 
+            var constants = new Dictionary<int, Opcodes> {
+                { 0, FakeOpcodes.ldc_i32_zero },
+                { 1, FakeOpcodes.ldc_i32_one },
+                { -1, FakeOpcodes.ldc_i32_minus_one }
+            };
+
             switch (current.Opcode) {
                 case Opcodes.i32_load:
                 case Opcodes.i32_store:
@@ -220,15 +227,12 @@ namespace WasmSaw {
                     break;
                 // /* surprisingly, this is worse! (not by much, though)
                 case Opcodes.i32_const:
+                    Opcodes newOpcode;
                     if (
-                        (current.Body.U.i32 == 0) ||
-                        (current.Body.U.i32 == 1)
+                        constants.TryGetValue(current.Body.U.i32, out newOpcode)
                     ) {
                         current = new Expression {
-                            Opcode = 
-                                current.Body.U.i32 == 0
-                                    ? FakeOpcodes.ldc_i32_zero
-                                    : FakeOpcodes.ldc_i32_one,
+                            Opcode = newOpcode,
                             Body = default(ExpressionBody)
                         };
                         return;
