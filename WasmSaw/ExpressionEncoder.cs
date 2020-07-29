@@ -64,7 +64,7 @@ namespace WasmSaw {
 
         public static class FakeOpcodes {
             public const byte FirstFakeOpcode = 0xF0;
-            public const Opcodes dup = (Opcodes)(FirstFakeOpcode + 0);
+            public const Opcodes read_prior_local = (Opcodes)(FirstFakeOpcode + 0);
             public const Opcodes i32_load_natural = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_natural = (Opcodes)(FirstFakeOpcode + 2);
             public const Opcodes ldc_i32_zero = (Opcodes)(FirstFakeOpcode + 3);
@@ -160,7 +160,7 @@ namespace WasmSaw {
                         (current.Body.U.u32 == previous.Body.U.u32)
                     ) {
                         current = new Expression {
-                            Opcode = ExpressionEncoder.FakeOpcodes.dup,
+                            Opcode = ExpressionEncoder.FakeOpcodes.read_prior_local,
                             Body = {
                                 Type = ExpressionBody.Types.none
                             }
