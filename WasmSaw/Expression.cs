@@ -234,8 +234,16 @@ namespace Wasm.Model {
             type,
             br_table,
 
+            // extension (non-standard) body types
+            ext_flush,
+
             // An expression can have both an immediate and children so this is a flag
             children = 0x80,
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ext_flush {
+            public uint local_index_1, local_index_2, offset_bytes;
         }
 
         [StructLayout(LayoutKind.Explicit)]
@@ -258,6 +266,8 @@ namespace Wasm.Model {
             public memory_immediate memory;
             [FieldOffset(0)]
             public LanguageTypes type;
+            [FieldOffset(0)]
+            public ext_flush flush;
         }
 
         public Types Type;

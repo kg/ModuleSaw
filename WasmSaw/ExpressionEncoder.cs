@@ -64,12 +64,13 @@ namespace WasmSaw {
 
         public static class FakeOpcodes {
             public const byte FirstFakeOpcode = 0xF0;
-            public const Opcodes read_prior_local = (Opcodes)(FirstFakeOpcode + 0);
-            public const Opcodes i32_load_natural = (Opcodes)(FirstFakeOpcode + 1);
-            public const Opcodes i32_store_natural = (Opcodes)(FirstFakeOpcode + 2);
-            public const Opcodes ldc_i32_zero = (Opcodes)(FirstFakeOpcode + 3);
-            public const Opcodes ldc_i32_one = (Opcodes)(FirstFakeOpcode + 4);
-            public const Opcodes ldc_i32_minus_one = (Opcodes)(FirstFakeOpcode + 5);
+            public const Opcodes read_prior_local = (Opcodes)(FirstFakeOpcode + 0),
+                                 i32_load_natural = (Opcodes)(FirstFakeOpcode + 1),
+                                 i32_store_natural = (Opcodes)(FirstFakeOpcode + 2),
+                                 ldc_i32_zero = (Opcodes)(FirstFakeOpcode + 3),
+                                 ldc_i32_one = (Opcodes)(FirstFakeOpcode + 4),
+                                 ldc_i32_minus_one = (Opcodes)(FirstFakeOpcode + 5),
+                                 flush_local_i32_natural = (Opcodes)(FirstFakeOpcode + 6);
             /*
             public const Opcodes i32_load_relative = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_relative = (Opcodes)(FirstFakeOpcode + 2);
@@ -118,7 +119,11 @@ namespace WasmSaw {
                     foreach (var t in bt.target_table)
                         Builder.Write(t, BrTables);
                     Builder.Write(bt.default_target, BrTables);
-
+                    break;
+                case ExpressionBody.Types.ext_flush:
+                    Builder.Write(e.Body.U.flush.local_index_1, LocalIndices);
+                    Builder.Write(e.Body.U.flush.local_index_2, LocalIndices);
+                    Builder.Write(e.Body.U.flush.offset_bytes, MemoryOffsets);
                     break;
 
                 default:
@@ -240,6 +245,36 @@ namespace WasmSaw {
                     break;
                 // */
             }
+
+            /*
+            switch (next.Opcode) {
+                case Opcodes.i32_store:
+                    if (
+                        (previous.Opcode == Opcodes.get_local) &&
+                        (current.Opcode == Opcodes.get_local) &&
+                        (next.Body.U.memory.alignment_exponent == 2)
+                    ) {
+                        previous = new Expression {
+                            Opcode = FakeOpcodes.flush_local_i32_natural,
+                            Body = new ExpressionBody {
+                                Type = ExpressionBody.Types.ext_flush,
+                                U = {
+                                    flush = {
+                                        local_index_1 = previous.Body.U.u32,
+                                        local_index_2 = current.Body.U.u32,
+                                        offset_bytes = next.Body.U.memory.offset
+                                    }
+                                }
+                            }
+                        };
+                        current = next = new Expression {
+                            Opcode = Opcodes.nop,
+                            Body = default(ExpressionBody)
+                        };
+                    }
+                    break;
+            }
+            */
         }
 
         private void FlushQueue (Expression[] queue, ref int queue_length, bool force) {
@@ -253,11 +288,10 @@ namespace WasmSaw {
                 // HACK: queue[3] is always default(Expression) to give us an easy way
                 //  to indirectly reference it
                 PeepholeOptimize(ref queue[3], ref queue[0], ref queue[1]);
-                WriteInternal(ref queue[0]);
-
-                for (int i = 1; i < queue_length; i++) {
+                for (int i = 1; i < queue_length; i++)
                     PeepholeOptimize(ref queue[i - 1], ref queue[i], ref queue[i + 1]);
 
+                for (int i = 0; i < queue_length; i++) {
                     // FIXME: Is this valid?
                     if (queue[i].Opcode == Opcodes.nop)
                         continue;
