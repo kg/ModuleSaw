@@ -176,6 +176,7 @@ namespace WasmSaw {
                     break;
                 }
                 // We could generate dup for set/get global pairs but they don't seem to actually show up
+
                 /* you'd think this would help, but brotli is smarter
                 case Opcodes.get_local: {
                     if (
@@ -230,7 +231,6 @@ namespace WasmSaw {
                         return;
                     }
                     break;
-                // /* surprisingly, this is worse! (not by much, though)
                 case Opcodes.i32_const:
                     Opcodes newOpcode;
                     if (
@@ -243,7 +243,6 @@ namespace WasmSaw {
                         return;
                     }
                     break;
-                // */
             }
 
             /*
