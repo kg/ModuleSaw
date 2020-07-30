@@ -70,7 +70,7 @@ namespace WasmSaw {
                                  ldc_i32_zero = (Opcodes)(FirstFakeOpcode + 3),
                                  ldc_i32_one = (Opcodes)(FirstFakeOpcode + 4),
                                  ldc_i32_minus_one = (Opcodes)(FirstFakeOpcode + 5),
-                                 flush_local_i32_natural = (Opcodes)(FirstFakeOpcode + 6);
+                                 ldc_i32_two = (Opcodes)(FirstFakeOpcode + 6);
             /*
             public const Opcodes i32_load_relative = (Opcodes)(FirstFakeOpcode + 1);
             public const Opcodes i32_store_relative = (Opcodes)(FirstFakeOpcode + 2);
@@ -119,11 +119,6 @@ namespace WasmSaw {
                     foreach (var t in bt.target_table)
                         Builder.Write(t, BrTables);
                     Builder.Write(bt.default_target, BrTables);
-                    break;
-                case ExpressionBody.Types.ext_flush:
-                    Builder.Write(e.Body.U.flush.local_index_1, LocalIndices);
-                    Builder.Write(e.Body.U.flush.local_index_2, LocalIndices);
-                    Builder.Write(e.Body.U.flush.offset_bytes, MemoryOffsets);
                     break;
 
                 default:
@@ -212,6 +207,7 @@ namespace WasmSaw {
             var constants = new Dictionary<int, Opcodes> {
                 { 0, FakeOpcodes.ldc_i32_zero },
                 { 1, FakeOpcodes.ldc_i32_one },
+                { 2, FakeOpcodes.ldc_i32_two },
                 { -1, FakeOpcodes.ldc_i32_minus_one }
             };
 
@@ -244,36 +240,6 @@ namespace WasmSaw {
                     }
                     break;
             }
-
-            /*
-            switch (next.Opcode) {
-                case Opcodes.i32_store:
-                    if (
-                        (previous.Opcode == Opcodes.get_local) &&
-                        (current.Opcode == Opcodes.get_local) &&
-                        (next.Body.U.memory.alignment_exponent == 2)
-                    ) {
-                        previous = new Expression {
-                            Opcode = FakeOpcodes.flush_local_i32_natural,
-                            Body = new ExpressionBody {
-                                Type = ExpressionBody.Types.ext_flush,
-                                U = {
-                                    flush = {
-                                        local_index_1 = previous.Body.U.u32,
-                                        local_index_2 = current.Body.U.u32,
-                                        offset_bytes = next.Body.U.memory.offset
-                                    }
-                                }
-                            }
-                        };
-                        current = next = new Expression {
-                            Opcode = Opcodes.nop,
-                            Body = default(ExpressionBody)
-                        };
-                    }
-                    break;
-            }
-            */
         }
 
         private void FlushQueue (Expression[] queue, ref int queue_length, bool force) {
