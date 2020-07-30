@@ -203,6 +203,13 @@ namespace Wasm.Model {
         i64_extend_32_s,
     }
 
+    public static class OpcodesInfo {
+        public const Opcodes FirstLoad = Opcodes.i32_load,
+            LastLoad = Opcodes.i64_load32_u,
+            FirstStore = Opcodes.i32_store,
+            LastStore = Opcodes.i64_store32;
+    }
+
     public enum ExpressionState : byte {
         Uninitialized = 0,
         BodyNotRead = 1,
