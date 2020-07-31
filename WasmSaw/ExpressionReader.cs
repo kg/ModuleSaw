@@ -228,7 +228,7 @@ namespace Wasm.Model {
                     case Opcodes.f32_load:
                     case Opcodes.f64_load:
                         expr.Body.Type = ExpressionBody.Types.memory;
-                        if (!ReadMemoryImmediate(out expr.Body.U.memory)) {
+                        if (!ReadMemoryImmediate(OpcodesInfo.MemorySizeForOpcode[expr.Opcode], out expr.Body.U.memory)) {
                             listener?.EndBody(ref expr, false, false);
                             return false;
                         }
@@ -245,7 +245,7 @@ namespace Wasm.Model {
                     case Opcodes.f32_store:
                     case Opcodes.f64_store:
                         expr.Body.Type = ExpressionBody.Types.memory;
-                        if (!ReadMemoryImmediate(out expr.Body.U.memory)) {
+                        if (!ReadMemoryImmediate(OpcodesInfo.MemorySizeForOpcode[expr.Opcode], out expr.Body.U.memory)) {
                             listener?.EndBody(ref expr, false, false);
                             return false;
                         }
@@ -428,9 +428,13 @@ namespace Wasm.Model {
             }
         }
 
-        public bool ReadMemoryImmediate (out memory_immediate memory) {
+        public bool ReadMemoryImmediate (uint natural_alignment, out memory_immediate memory) {
             memory.alignment_exponent = (uint)Reader.ReadLEBUInt();
             memory.offset = (uint)Reader.ReadLEBUInt();
+
+            memory.EXT_natural_alignment = natural_alignment;
+            memory.EXT_relative_alignment_exponent = (uint)Math.Log(natural_alignment, 2);
+
             return true;
         }
     }

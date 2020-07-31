@@ -210,6 +210,32 @@ namespace Wasm.Model {
             LastLoad = Opcodes.i64_load32_u,
             FirstStore = Opcodes.i32_store,
             LastStore = Opcodes.i64_store32;
+
+        public static readonly Dictionary<Opcodes, uint> MemorySizeForOpcode = new Dictionary<Opcodes, uint> {
+            { Opcodes.i32_load, 4 },
+            { Opcodes.i64_load, 8 },
+            { Opcodes.f32_load, 4 },
+            { Opcodes.f64_load, 8 },
+            { Opcodes.i32_load8_s, 1 },
+            { Opcodes.i32_load8_u, 1 },
+            { Opcodes.i32_load16_s, 2 },
+            { Opcodes.i32_load16_u, 2 },
+            { Opcodes.i64_load8_s, 1 },
+            { Opcodes.i64_load8_u, 1 },
+            { Opcodes.i64_load16_s, 2 },
+            { Opcodes.i64_load16_u, 2 },
+            { Opcodes.i64_load32_s, 4 },
+            { Opcodes.i64_load32_u, 4 },
+            { Opcodes.i32_store, 4 },
+            { Opcodes.i64_store, 8 },
+            { Opcodes.f32_store, 4 },
+            { Opcodes.f64_store, 8 },
+            { Opcodes.i32_store8, 1 },
+            { Opcodes.i32_store16, 2 },
+            { Opcodes.i64_store8, 1 },
+            { Opcodes.i64_store16, 2 },
+            { Opcodes.i64_store32, 4 },
+        };
     }
 
     public enum ExpressionState : byte {
@@ -308,6 +334,9 @@ namespace Wasm.Model {
     public struct memory_immediate {
         public uint alignment_exponent;
         public uint offset;
+
+        public uint EXT_natural_alignment;
+        public uint EXT_relative_alignment_exponent;
     }
 
     public struct call_indirect_immediate {

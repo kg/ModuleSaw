@@ -199,10 +199,7 @@ namespace WasmSaw {
         }
 
         public class global_variableEncoder : TypeEncoder<global_variable> {
-            KeyedStreamWriter types;
-
             public global_variableEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
-                types = GetStream("global_variable.type");
             }
 
             public override void Encode (ref global_variable value) {
