@@ -52,11 +52,6 @@ namespace WasmSaw {
                 case FakeOpcodes.i32_load_natural:
                 case FakeOpcodes.i32_store_natural:
                     return MemoryOffsets;
-                /*
-                case FakeOpcodes.i32_load_relative:
-                case FakeOpcodes.i32_store_relative:
-                    return MemoryOffsets;
-                */
             }
 
             return null;
@@ -65,13 +60,37 @@ namespace WasmSaw {
         public static class FakeOpcodes {
             // NOTE: The spec reserves '0xFC ...' for the trunc_sat prefix
             public const byte FirstFakeOpcode = 0xD0;
-            public const Opcodes read_prior_local = (Opcodes)(FirstFakeOpcode + 0),
+
+            public const Opcodes 
+                                 // set_local x, get_local x pairs are common (~4400 in dotnet.wasm)
+                                 //  so replacing the 2nd get_local with a special 'dup' opcode
+                                 //  allows us to skip encoding the local index again, and save some
+                                 //  space. converting the pair into a single tee_local instruction
+                                 //  is *not* better than this, for reasons that are not obvious to me
+                                 //  the semantics of set+get are different from tee in a threading context
+                                 //  anyway.
+                                 read_prior_local = (Opcodes)(FirstFakeOpcode + 0),
+                                 // 'natural' i32 load/store save around 500b,
+                                 //  and without the relative exponent encoding for memory
+                                 //  alignment they save considerably more
                                  i32_load_natural = (Opcodes)(FirstFakeOpcode + 1),
                                  i32_store_natural = (Opcodes)(FirstFakeOpcode + 2),
+                                 // 0 and 1 save a considerable amount of space,
+                                 // -1 and 2 help a bit less but still help
                                  ldc_i32_zero = (Opcodes)(FirstFakeOpcode + 3),
                                  ldc_i32_one = (Opcodes)(FirstFakeOpcode + 4),
                                  ldc_i32_minus_one = (Opcodes)(FirstFakeOpcode + 5),
                                  ldc_i32_two = (Opcodes)(FirstFakeOpcode + 6);
+
+            /*
+             * Graveyard of abandoned and failed experiments:
+             * 'load/store relative' opcodes for the pattern | a[b+c] |
+             * ldc.i32.pot for constants that are powers of two
+             * 'unreachable call' opcode for the pattern | call x; unreachable; end |
+             * 'multi-get'/'multi-set' opcodes i.e. | (a, b, c) = (mem[0], mem[4], mem[8]) |
+             * 'get-and-store' opcode for the pattern | mem[x] = local |
+             */
+               
         }
 
         private void WriteInternal (
