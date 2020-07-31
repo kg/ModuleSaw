@@ -432,12 +432,13 @@ namespace Wasm.Model {
             memory.alignment_exponent = (uint)Reader.ReadLEBUInt();
             memory.offset = (uint)Reader.ReadLEBUInt();
 
+            // HACK: We want to encode memory immediates' alignments relative to the natural alignment
+            //  of the load/store operation. Most load/store operations will be naturally aligned, so
+            //  doing this will mean all their alignments are encoded as 0 instead of 1/2/4/8. This makes
+            //  the alignment stream more compressible.
             memory.EXT_natural_alignment = natural_alignment;
             memory.EXT_natural_exponent = (uint)Math.Log(natural_alignment, 2);
             memory.EXT_relative_alignment_exponent = (int)memory.alignment_exponent - (int)memory.EXT_natural_exponent;
-
-            if (memory.EXT_relative_alignment_exponent != 0)
-                ;
 
             return true;
         }
