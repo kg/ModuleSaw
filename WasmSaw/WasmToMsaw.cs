@@ -11,7 +11,9 @@ using Wasm.Model;
 namespace WasmSaw {
     public static class WasmToMsaw {
         public const uint MinimumSegmentSize = 81920;
-        public const int CodeSegmentSplitInterval = 255;
+        // FIXME: Segment splitting increases post-compression size by a measurable amount,
+        //  but optimizes for better streaming compile speeds
+        public const int CodeSegmentSplitInterval = 0;
         public const int DataSegmentSplitInterval = 0;
 
         public static void Convert (Stream input, Stream output) {
