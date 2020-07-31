@@ -63,7 +63,8 @@ namespace WasmSaw {
         }
 
         public static class FakeOpcodes {
-            public const byte FirstFakeOpcode = 0xF0;
+            // NOTE: The spec reserves '0xFC ...' for the trunc_sat prefix
+            public const byte FirstFakeOpcode = 0xD0;
             public const Opcodes read_prior_local = (Opcodes)(FirstFakeOpcode + 0),
                                  i32_load_natural = (Opcodes)(FirstFakeOpcode + 1),
                                  i32_store_natural = (Opcodes)(FirstFakeOpcode + 2),
@@ -71,10 +72,6 @@ namespace WasmSaw {
                                  ldc_i32_one = (Opcodes)(FirstFakeOpcode + 4),
                                  ldc_i32_minus_one = (Opcodes)(FirstFakeOpcode + 5),
                                  ldc_i32_two = (Opcodes)(FirstFakeOpcode + 6);
-            /*
-            public const Opcodes i32_load_relative = (Opcodes)(FirstFakeOpcode + 1);
-            public const Opcodes i32_store_relative = (Opcodes)(FirstFakeOpcode + 2);
-            */
         }
 
         private void WriteInternal (

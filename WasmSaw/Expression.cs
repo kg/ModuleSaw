@@ -195,12 +195,14 @@ namespace Wasm.Model {
         f32_reinterpret_i32, 		
         f64_reinterpret_i64,
 
-        // not in the spec 😒
         i32_extend_8_s = 0xc0,
         i32_extend_16_s,
         i64_extend_8_s,
         i64_extend_16_s,
         i64_extend_32_s,
+
+        PREFIX_sat = 0xfc,
+        PREFIX_atomic = 0xfe
     }
 
     public static class OpcodesInfo {

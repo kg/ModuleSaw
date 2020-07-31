@@ -17,6 +17,13 @@ namespace ModuleSaw {
             }
         }
 
+        // HACK: Large padding regions at stream boundaries can increase brotli compression
+        //  efficiency, presumably because the context model responds to the distance between
+        //  different data types?
+        public const int StreamAlignment = 1024 * 32;
+
+        public const int StreamAlignmentThreshold = 1024;
+
         public const uint BoundaryMarker1 = 0xDBCA1234,
             BoundaryMarker2 = 0xABCD9876,
             BoundaryMarker3 = 0x13579FCA;
@@ -144,14 +151,16 @@ namespace ModuleSaw {
             using (var writer = new BinaryWriter(output, Encoding.UTF8, true)) {
                 writer.Write(Prologue);
 
+                var savedStreamCount = OrderedStreams.Count;
+
                 writer.Write(BoundaryMarker1);
-                writer.Write(OrderedStreams.Count);
+                writer.Write(savedStreamCount);
 
                 writer.Flush();
 
                 var startOfHeaders = (uint)writer.BaseStream.Position;
                 var headerSize = KeyedStreamWriter.HeaderSize;
-                var endOfHeaders = startOfHeaders + (uint)(OrderedStreams.Count * headerSize) + 4;
+                var endOfHeaders = startOfHeaders + (uint)(savedStreamCount * headerSize) + 4;
 
                 var dataOffset = endOfHeaders;
 
@@ -169,9 +178,16 @@ namespace ModuleSaw {
                     writer.Write((uint)streamIndex);
                     writer.Write((uint)seg.Index);
                     writer.Write(seg.Length);
-                    using (var window = new StreamWindow(s.Stream, seg.Offset, seg.Length)) {
+                    using (var window = new StreamWindow(s.Stream, seg.Offset, seg.Length))
                         window.CopyTo(writer.BaseStream);
-                        writer.Write(BoundaryMarker3);
+
+                    writer.Write(BoundaryMarker3);
+
+                    if (seg.Length > StreamAlignmentThreshold) {
+                        var paddedLength = ((seg.Length + StreamAlignment - 1) / StreamAlignment) * StreamAlignment;
+                        var paddingLength = paddedLength - seg.Length;
+                        for (int i = 0; i < paddingLength; i++)
+                            writer.Write((byte)0);
                     }
                 }
 
