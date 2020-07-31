@@ -20,7 +20,7 @@ namespace ModuleSaw {
         // HACK: Large padding regions at stream boundaries can increase brotli compression
         //  efficiency, presumably because the context model responds to the distance between
         //  different data types?
-        public const int StreamAlignment = 1024 * 32;
+        public const int StreamAlignment = 1024 * 64;
 
         public const int StreamAlignmentThreshold = 1024;
 
@@ -48,10 +48,10 @@ namespace ModuleSaw {
             LongStream = GetStream("i64");
             IntStream = GetStream("i32");
             UIntStream = GetStream("u32");
-            ByteStream = GetStream("u8");
+            ByteStream = UIntStream;
             SingleStream = GetStream("f32");
             DoubleStream = GetStream("f64");
-            BooleanStream = GetStream("u1");
+            BooleanStream = ByteStream;
             StringLengthStream = GetStream("stringLength");
             ArrayLengthStream = GetStream("arrayLength");
         }
@@ -166,6 +166,12 @@ namespace ModuleSaw {
 
                 foreach (var s in OrderedStreams)
                     s.WriteStreamTableHeader(writer);
+
+                var streamSummary = (from s in OrderedStreams
+                                     select new {
+                                         name = s.Key,
+                                         length = s.Length
+                                     }).ToArray();
 
                 writer.Write(BoundaryMarker2);
                 writer.Flush();

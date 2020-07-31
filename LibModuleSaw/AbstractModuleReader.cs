@@ -187,10 +187,10 @@ namespace ModuleSaw {
             IntStream = Streams.Open("i32");
             UIntStream = Streams.Open("u32");
             LongStream = Streams.Open("i64");
-            ByteStream = Streams.Open("u8");
+            ByteStream = UIntStream;
             SingleStream = Streams.Open("f32");
             DoubleStream = Streams.Open("f64");
-            BooleanStream = Streams.Open("u1");
+            BooleanStream = ByteStream;
             ArrayLengthStream = Streams.Open("arrayLength");
             StringLengthStream = Streams.Open("stringLength");
         }

@@ -75,14 +75,12 @@ namespace WasmSaw {
         }
 
         public resizable_limits resizable_limits () {
-            var flags = GetStream("rl_flag");
-            var initials = GetStream("rl_initial");
-            var maximums = GetStream("rl_maximum");
+            var s = GetStream("resizable_limits");
 
             var result = new resizable_limits();
-            Check(flags.Read(out result.flags));
-            Check(initials.ReadU32LEB(out result.initial));
-            Check(maximums.ReadU32LEB(out result.maximum));
+            Check(s.Read(out result.flags));
+            Check(s.ReadU32LEB(out result.initial));
+            Check(s.ReadU32LEB(out result.maximum));
             return result;
         }
 
@@ -95,11 +93,10 @@ namespace WasmSaw {
         }
 
         public global_type global_type () {
-            var contentTypes = GetStream("content_type");
-            var mutabilities = GetStream("mutability");
+            var s = GetStream("global_types");
             var result = new global_type();
-            Check(mutabilities.Read(out result.mutability));
-            Check(contentTypes.Read(out result.content_type));
+            Check(s.Read(out result.mutability));
+            Check(s.Read(out result.content_type));
             return result;
         }
 

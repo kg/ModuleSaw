@@ -112,19 +112,17 @@ namespace WasmSaw {
         }
 
         public class resizable_limitsEncoder : TypeEncoder<resizable_limits> {
-            KeyedStreamWriter flags, initials, maximums;
+            KeyedStreamWriter stream;
 
             public resizable_limitsEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
-                flags = GetStream("rl_flag");
-                initials = GetStream("rl_initial");
-                maximums = GetStream("rl_maximum");
+                stream = GetStream("resizable_limits");
             }
 
             public override void Encode (ref resizable_limits value) {
-                flags.Write(value.flags);
-                Builder.Write(value.initial, initials);
+                stream.Write(value.flags);
+                Builder.Write(value.initial, stream);
                 // if (value.flags == 1)
-                Builder.Write(value.maximum, maximums);
+                Builder.Write(value.maximum, stream);
             }
         }
 
@@ -143,16 +141,15 @@ namespace WasmSaw {
         }
 
         public class global_typeEncoder : TypeEncoder<global_type> {
-            KeyedStreamWriter contentTypes, mutabilities;
+            KeyedStreamWriter stream;
 
             public global_typeEncoder (ModuleEncoder moduleEncoder) : base (moduleEncoder) {
-                contentTypes = GetStream("content_type");
-                mutabilities = GetStream("mutability");
+                stream = GetStream("global_types");
             }
 
             public override void Encode (ref global_type value) {
-                mutabilities.Write(value.mutability);
-                contentTypes.Write((byte)value.content_type);
+                stream.Write(value.mutability);
+                stream.Write((byte)value.content_type);
             }
         }
 
