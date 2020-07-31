@@ -433,7 +433,11 @@ namespace Wasm.Model {
             memory.offset = (uint)Reader.ReadLEBUInt();
 
             memory.EXT_natural_alignment = natural_alignment;
-            memory.EXT_relative_alignment_exponent = (uint)Math.Log(natural_alignment, 2);
+            memory.EXT_natural_exponent = (uint)Math.Log(natural_alignment, 2);
+            memory.EXT_relative_alignment_exponent = (int)memory.alignment_exponent - (int)memory.EXT_natural_exponent;
+
+            if (memory.EXT_relative_alignment_exponent != 0)
+                ;
 
             return true;
         }

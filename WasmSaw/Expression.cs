@@ -335,8 +335,8 @@ namespace Wasm.Model {
         public uint alignment_exponent;
         public uint offset;
 
-        public uint EXT_natural_alignment;
-        public uint EXT_relative_alignment_exponent;
+        public uint EXT_natural_alignment, EXT_natural_exponent;
+        public int EXT_relative_alignment_exponent;
     }
 
     public struct call_indirect_immediate {

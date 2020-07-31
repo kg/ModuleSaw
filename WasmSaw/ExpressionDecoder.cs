@@ -213,7 +213,7 @@ namespace WasmSaw {
                     case Opcodes.i64_load:
                     case Opcodes.f32_load:
                     case Opcodes.f64_load:
-                        if (!DecodeMemoryImmediate(out expr.Body))
+                        if (!DecodeMemoryImmediate(OpcodesInfo.MemorySizeForOpcode[expr.Opcode], out expr.Body))
                             return false;
 
                         break;
@@ -227,7 +227,7 @@ namespace WasmSaw {
                     case Opcodes.i64_store:
                     case Opcodes.f32_store:
                     case Opcodes.f64_store:
-                        if (!DecodeMemoryImmediate(out expr.Body))
+                        if (!DecodeMemoryImmediate(OpcodesInfo.MemorySizeForOpcode[expr.Opcode], out expr.Body))
                             return false;
 
                         break;
@@ -406,13 +406,42 @@ namespace WasmSaw {
             return true;
         }
 
-        private bool DecodeMemoryImmediate (out ExpressionBody body) {
-            body = new ExpressionBody {
-                Type = ExpressionBody.Types.memory
+        private bool DecodeMemoryImmediate (uint natural_alignment, out ExpressionBody body) {
+            var mem = new memory_immediate {
+                EXT_natural_alignment = natural_alignment,
+                EXT_natural_exponent = (uint)Math.Log(natural_alignment, 2)
             };
-            if (!MemoryAlignments.ReadU32LEB(out body.U.memory.alignment_exponent))
+
+            if (
+                MemoryAlignments.ReadI32LEB(out mem.EXT_relative_alignment_exponent) &&
+                MemoryOffsets.ReadU32LEB(out mem.offset)
+            ) {
+                var ae = mem.EXT_natural_exponent + mem.EXT_relative_alignment_exponent;
+                // FIXME
+                if (ae < 0)
+                    throw new Exception();
+
+                mem.alignment_exponent = (uint)ae;
+                body = new ExpressionBody {
+                    Type = ExpressionBody.Types.memory,
+                    U = {
+                        memory = mem
+                    }
+                };
+                return true;
+            } else {
+                body = default(ExpressionBody);
                 return false;
-            return MemoryOffsets.ReadU32LEB(out body.U.memory.offset);
+            }
+
+            /*
+            memory.alignment_exponent = (uint)Reader.ReadLEBUInt();
+            memory.offset = (uint)Reader.ReadLEBUInt();
+
+            memory.EXT_natural_alignment = natural_alignment;
+            memory.EXT_natural_exponent = (uint)Math.Log(natural_alignment, 2);
+            memory.EXT_relative_alignment_exponent = (int)memory.EXT_natural_exponent - (int)memory.alignment_exponent;
+            */
         }
 
         private bool DecodeChildren (ref Expression parent) {

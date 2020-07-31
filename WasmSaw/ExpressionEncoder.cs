@@ -104,7 +104,7 @@ namespace WasmSaw {
                     (s ?? Builder.SingleStream).Write(e.Body.U.f32);
                     break;
                 case ExpressionBody.Types.memory:
-                    Builder.Write(e.Body.U.memory.alignment_exponent, MemoryAlignments);
+                    Builder.Write(e.Body.U.memory.EXT_relative_alignment_exponent, MemoryAlignments);
                     Builder.Write(e.Body.U.memory.offset, MemoryOffsets);
                     break;
                 case ExpressionBody.Types.type:
