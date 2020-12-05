@@ -221,7 +221,7 @@ namespace WasmSaw {
             BinaryWriter writer, ref Expression e
         ) {
             uint _2 = 0;
-            EmitExpression(writer, ref e, ref _2);
+            EmitExpression(writer, ref e, ref _2, true);
             writer.Write((byte)Opcodes.end);
             return _2;
         }
@@ -229,7 +229,8 @@ namespace WasmSaw {
         private static void EmitExpression (
             BinaryWriter writer, 
             ref Expression e, 
-            ref uint numEmitted
+            ref uint numEmitted,
+            bool recursive
         ) {
             writer.Write((byte)e.Opcode);
             numEmitted++;
@@ -279,12 +280,41 @@ namespace WasmSaw {
             if (e.Opcode == Opcodes.call_indirect)
                 writer.Write((byte)0);
 
-            if ((e.Body.children != null) && (e.Body.children.Count > 0)) {
-                Expression c;
-                for (int i = 0; i < e.Body.children.Count; i++) {
-                    c = e.Body.children[i];
-                    EmitExpression(writer, ref c, ref numEmitted);
+            if (!recursive)
+                return;
+
+            if ((e.Body.children != null) && (e.Body.children.Count > 0))
+                EmitExpressionChildren(writer, ref e, ref numEmitted);
+        }
+
+        private static void EmitExpressionChildren (
+            BinaryWriter writer, 
+            ref Expression e, 
+            ref uint numEmitted
+        ) {
+            var stack = new Stack<(List<Expression>, int)>();
+            var current = e.Body.children;
+            int i = 0;
+            while (true) {
+                if (i >= current.Count) {
+                    if (stack.Count <= 0)
+                        return;
+                    else {
+                        var tup = stack.Pop();
+                        current = tup.Item1;
+                        i = tup.Item2;
+                        continue;
+                    }
                 }
+
+                var c = current[i++];
+                EmitExpression(writer, ref c, ref numEmitted, false);
+                if ((c.Body.children == null) || (c.Body.children.Count <= 0))
+                    continue;
+
+                stack.Push((current, i));
+                current = c.Body.children;
+                i = 0;
             }
         }
 
@@ -352,7 +382,7 @@ namespace WasmSaw {
                     var decodedAfter = expressionDecoder.NumDecoded;
 
                     var emittedBefore = numEmitted;
-                    EmitExpression(functionWriter, ref e, ref numEmitted);
+                    EmitExpression(functionWriter, ref e, ref numEmitted, true);
                     var emittedAfter = numEmitted;
 
                     var numEmittedThisStep = emittedAfter - emittedBefore;

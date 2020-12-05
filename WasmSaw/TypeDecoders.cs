@@ -167,8 +167,12 @@ namespace WasmSaw {
             Check(Reader.UIntStream.ReadU32LEB(out result.index));
             Check(Reader.UIntStream.ReadU32LEB(out result.size));
             
-            if (!Expression.Decode(out result.offset))
-                throw new Exception("Decode failed for data_segment " + result.offset.Opcode);
+            if (!Expression.Decode(out result.offset)) {
+                Console.WriteLine(
+                    // throw new Exception(
+                    "Decode failed for data_segment offset: opcode was " + result.offset.Opcode
+                );
+            }
 
             return result;
         }
