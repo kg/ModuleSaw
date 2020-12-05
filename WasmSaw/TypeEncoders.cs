@@ -46,7 +46,7 @@ namespace WasmSaw {
         }
 
         protected void Write (ref Expression e) {
-            ModuleEncoder.ExpressionEncoder.Write(ref e);
+            ModuleEncoder.ExpressionEncoder.WriteUnbuffered(ref e);
         }
     }
 
@@ -265,12 +265,16 @@ namespace WasmSaw {
 
                     Expression e;
 
+                    Console.WriteLine();
+                    Console.WriteLine("-- {0:00000} ({1} byte(s))", value.Index, value.body_size);
+
+                    var originalDecoded = reader.NumRead;
                     var originalCount = ModuleEncoder.ExpressionEncoder.NumWritten;
                     while (reader.TryReadExpression(out e)) {
                         if (!reader.TryReadExpressionBody(ref e))
                             throw new Exception("Failed to read body of " + e.Opcode);
 
-                        Write(ref e);
+                        ModuleEncoder.ExpressionEncoder.WriteBuffered(ref e);
                     }
 
                     ModuleEncoder.ExpressionEncoder.Flush();
@@ -278,12 +282,16 @@ namespace WasmSaw {
                     if (subStream.Position != subStream.Length)
                         throw new Exception("Stopped reading opcodes before end of function body");
 
+                    var finalDecoded = reader.NumRead;
                     var finalCount = ModuleEncoder.ExpressionEncoder.NumWritten;
-                    if (previous == Opcodes.end) {
-                        Builder.Write(finalCount - originalCount, functionExpressionCounts);
-                        return;
-                    } else
+                    var deltaDecoded = finalDecoded - originalDecoded;
+                    var deltaCount = finalCount - originalCount;
+                    if (deltaDecoded != deltaCount)
+                        throw new Exception("Failed to encode all decoded expressions");
+                    if (previous != Opcodes.end)
                         throw new Exception("Found no end opcode in function body");
+
+                    Builder.Write(deltaCount, functionExpressionCounts);
                 }
             }
         }

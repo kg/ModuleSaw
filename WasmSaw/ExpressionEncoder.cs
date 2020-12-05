@@ -8,7 +8,7 @@ using Wasm.Model;
 
 namespace WasmSaw {
     public class ExpressionEncoder {
-        public const bool EnableOptimizer = false;
+        public const bool EnableOptimizer = true;
 
         public readonly AbstractModuleBuilder Builder;
 
@@ -18,8 +18,8 @@ namespace WasmSaw {
 
         public int NumWritten = 0;
 
-        // [prev, current, next, default(Expression)]
-        private Expression[] WriteQueue = new Expression[4];
+        // [prev, current, next]
+        private Expression[] WriteQueue = new Expression[3];
         private int WriteQueueLength = 0;
 
         public ExpressionEncoder (AbstractModuleBuilder builder) {
@@ -86,6 +86,27 @@ namespace WasmSaw {
                                  ldc_i32_minus_one = (Opcodes)(FirstFakeOpcode + 5),
                                  ldc_i32_two = (Opcodes)(FirstFakeOpcode + 6);
 
+            public static readonly Dictionary<int, Opcodes> Constants = 
+                new Dictionary<int, Opcodes> {
+                    { 0, ldc_i32_zero },
+                    { 1, ldc_i32_one },
+                    { 2, ldc_i32_two },
+                    { -1, ldc_i32_minus_one }
+                };
+
+            public static readonly Dictionary<Opcodes, int> ReverseConstants = 
+                new Dictionary<Opcodes, int> {
+                    { ldc_i32_zero, 0 },
+                    { ldc_i32_one, 1 },
+                    { ldc_i32_two, 2 },
+                    { ldc_i32_minus_one, -1 }
+                };
+
+            public static readonly Dictionary<Opcodes, Opcodes> NaturalOps =
+                new Dictionary<Opcodes, Opcodes> {
+                    { Opcodes.i32_load,  FakeOpcodes.i32_load_natural },
+                    { Opcodes.i32_store, FakeOpcodes.i32_store_natural }
+                };
             /*
              * Graveyard of abandoned and failed experiments:
              * 'load/store relative' opcodes for the pattern | a[b+c] |
@@ -99,6 +120,7 @@ namespace WasmSaw {
         private void WriteInternal (
             ref Expression e
         ) {
+            Console.WriteLine("> write {0}", e);
             OpcodeStream.Write((byte)e.Opcode);
             NumWritten++;
 
@@ -146,12 +168,11 @@ namespace WasmSaw {
             }
         }
 
-        public void Write (ref Expression e) {
-            FlushQueue(WriteQueue, ref WriteQueueLength, false);
-            WriteQueue[WriteQueueLength++] = e;
+        public void WriteBuffered (ref Expression e) {
+            Enqueue(WriteQueue, ref WriteQueueLength, ref e);
 
             if ((e.Body.Type & ExpressionBody.Types.children) != 0)
-                WriteChildren(e.Body.children);
+                EnqueueChildren(e.Body.children);
         }
 
         private struct WriteState {
@@ -159,7 +180,7 @@ namespace WasmSaw {
             public int offset, count;
         }
 
-        private void WriteChildren (List<Expression> children) {
+        private void EnqueueChildren (List<Expression> children) {
             if (children.Count <= 0)
                 return;
 
@@ -175,9 +196,8 @@ namespace WasmSaw {
                     continue;
                 }
 
-                FlushQueue(WriteQueue, ref WriteQueueLength, false);
                 var child = state.list[state.offset++];
-                WriteQueue[WriteQueueLength++] = child;
+                Enqueue(WriteQueue, ref WriteQueueLength, ref child);
 
                 var subChildren = child.Body.children;
                 if ((subChildren != null) && (subChildren.Count > 0)) {
@@ -187,10 +207,27 @@ namespace WasmSaw {
                     state = new WriteState { list = subChildren, count = subChildren.Count, offset = 0 };
                 }
             }
+
+            return;
+        }
+
+        private void Enqueue (Expression[] queue, ref int queueLength, ref Expression e) {
+            FlushQueue(queue, ref queueLength, false);
+
+            if (queueLength >= 3)
+                throw new ArgumentOutOfRangeException("queueLength");
+
+            queue[queueLength++] = e;
+            FlushQueue(queue, ref queueLength, false);
         }
 
         public void Write (Expression e) {
-            Write(ref e);
+            WriteUnbuffered(ref e);
+        }
+
+        public void WriteUnbuffered (ref Expression e) {
+            WriteBuffered(ref e);
+            Flush();
         }
 
         private void PeepholeOptimize (ref Expression previous, ref Expression current, ref Expression next) {
@@ -242,24 +279,12 @@ namespace WasmSaw {
                 */
             }
 
-            var naturalOps = new Dictionary<Opcodes, Opcodes> {
-                { Opcodes.i32_load,  FakeOpcodes.i32_load_natural },
-                { Opcodes.i32_store, FakeOpcodes.i32_store_natural }
-            };
-
-            var constants = new Dictionary<int, Opcodes> {
-                { 0, FakeOpcodes.ldc_i32_zero },
-                { 1, FakeOpcodes.ldc_i32_one },
-                { 2, FakeOpcodes.ldc_i32_two },
-                { -1, FakeOpcodes.ldc_i32_minus_one }
-            };
-
             switch (current.Opcode) {
                 case Opcodes.i32_load:
                 case Opcodes.i32_store:
                     if (current.Body.U.memory.alignment_exponent == 2) {
                         current = new Expression {
-                            Opcode = naturalOps[current.Opcode],
+                            Opcode = FakeOpcodes.NaturalOps[current.Opcode],
                             Body = {
                                 Type = ExpressionBody.Types.u32,
                                 U = {
@@ -273,7 +298,7 @@ namespace WasmSaw {
                 case Opcodes.i32_const:
                     Opcodes newOpcode;
                     if (
-                        constants.TryGetValue(current.Body.U.i32, out newOpcode)
+                        FakeOpcodes.Constants.TryGetValue(current.Body.U.i32, out newOpcode)
                     ) {
                         current = new Expression {
                             Opcode = newOpcode,
@@ -285,34 +310,29 @@ namespace WasmSaw {
             }
         }
 
-        private void FlushQueue (Expression[] queue, ref int queue_length, bool force) {
-            if (queue_length == 0)
-                return;
-
-            if (queue_length > 3)
+        private void FlushQueue (Expression[] queue, ref int queueLength, bool force) {
+            if (queueLength > 3)
                 throw new Exception();
 
-            if ((queue_length == 3) || force) {
-                // HACK: queue[3] is always default(Expression) to give us an easy way
-                //  to indirectly reference it
-                if (EnableOptimizer) {
-                    PeepholeOptimize(ref queue[3], ref queue[0], ref queue[1]);
-                    for (int i = 1; i < queue_length; i++)
-                        PeepholeOptimize(ref queue[i - 1], ref queue[i], ref queue[i + 1]);
-                }
+            var minimum = force ? 1 : 3;
 
-                for (int i = 0; i < queue_length; i++)
-                    WriteInternal(ref queue[i]);
+            while (queueLength >= minimum) {
+                if (EnableOptimizer)
+                    PeepholeOptimize(ref queue[0], ref queue[1], ref queue[2]);
 
-                queue_length = 0;
+                WriteInternal(ref queue[0]);
+                queue[0] = queue[1];
+                queue[1] = queue[2];
+                queue[2] = default(Expression);
 
-                for (int i = 0; i < queue.Length; i++)
-                    queue[i] = default(Expression);
+                queueLength--;
             }
         }
 
         internal void Flush () {
             FlushQueue(WriteQueue, ref WriteQueueLength, true);
+            for (int i = 0; i < WriteQueue.Length; i++)
+                WriteQueue[i] = default(Expression);
         }
     }
 }

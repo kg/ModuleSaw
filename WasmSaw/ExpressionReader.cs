@@ -52,6 +52,8 @@ namespace Wasm.Model {
             return (Reader.ReadByte() == (byte)Opcodes.end);
         }
 
+        int Depth = 0;
+
         public bool TryReadExpression (out Expression result, ExpressionReaderListener listener = null) {
             listener?.BeginHeader();
             result = default(Expression);
@@ -66,6 +68,7 @@ namespace Wasm.Model {
 
             NumRead += 1;
 
+            Console.WriteLine("{1} read {0}", result, new string('<', Depth));
             listener?.EndHeader(ref result, true);
             return true;
         }
@@ -87,12 +90,14 @@ namespace Wasm.Model {
             var parent = expr;
             Expression child;
 
+            Depth++;
             while (TryReadExpression(out child, listener)) {
                 if (!TryReadExpressionBodyNonRecursive(ref child, out bool needToReadChildren, listener)) {
                     if (!needToReadChildren)
                         // FIXME: Fire EndBody events
                         return false;
 
+                    Depth++;
                     pseudostack.Add(parent);
                     parent = child;
                     continue;
@@ -105,15 +110,20 @@ namespace Wasm.Model {
                     parent.State = ExpressionState.Initialized;
                     listener?.EndBody(ref parent, true, true);
 
-                    if (pseudostack.Count == 0) {
-                        expr.State = ExpressionState.Initialized;
-                        return true;
-                    }
+                    bool wasElse = false;
+                    do {
+                        if (pseudostack.Count == 0) {
+                            expr.State = ExpressionState.Initialized;
+                            return true;
+                        }
 
-                    var outer = pseudostack[pseudostack.Count - 1];
-                    outer.Body.children.Add(parent);
-                    parent = outer;
-                    pseudostack.RemoveAt(pseudostack.Count - 1);
+                        var outer = pseudostack[pseudostack.Count - 1];
+                        outer.Body.children.Add(parent);
+                        wasElse = parent.Opcode == Opcodes.@else;
+                        parent = outer;
+                        pseudostack.RemoveAt(pseudostack.Count - 1);
+                        Depth--;
+                    } while (wasElse);
                 }
             }
 

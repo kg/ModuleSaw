@@ -89,12 +89,16 @@ namespace WasmSaw {
             if (recursive || !needToDecodeChildren)
                 e.State = ExpressionState.Initialized;
 
+            Console.WriteLine("< decoded {0}", e);
+
             return true;
         }
 
         private bool DecodeExpressionBody (ref Expression expr, ArrayBinaryReader stream) {
             return DecodeExpressionBody(ref expr, stream, true, out bool temp);
         }
+
+        private uint MostRecentLocalIndex;
 
         private bool DecodeExpressionBody (ref Expression expr, ArrayBinaryReader stream, bool recursive, out bool needToDecodeChildren) {
             var u32 = stream ?? Reader.UIntStream;
@@ -150,11 +154,20 @@ namespace WasmSaw {
                 case Opcodes.br_if:
                 case Opcodes.get_global:
                 case Opcodes.set_global:
+                    if (!u32.ReadU32LEB(out expr.Body.U.u32))
+                        return false;
+
+                    expr.Body.Type = ExpressionBody.Types.u32;
+
+                    break;
+
                 case Opcodes.get_local:
                 case Opcodes.set_local:
                 case Opcodes.tee_local:
                     if (!u32.ReadU32LEB(out expr.Body.U.u32))
                         return false;
+
+                    MostRecentLocalIndex = expr.Body.U.u32;
 
                     expr.Body.Type = ExpressionBody.Types.u32;
 
@@ -405,7 +418,7 @@ namespace WasmSaw {
 
                 default: {
                     if (expr.Opcode >= (Opcodes)ExpressionEncoder.FakeOpcodes.FirstFakeOpcode)
-                        throw new Exception($"Unimplemented fake opcode {expr.Opcode}");
+                        return DecodeFakeOpcode(ref expr, stream, recursive, ref needToDecodeChildren);
 
                     return false;
                 }
@@ -413,6 +426,45 @@ namespace WasmSaw {
 
             expr.State = ExpressionState.Initialized;
             return true;
+        }
+
+        private bool DecodeFakeOpcode (ref Expression expr, ArrayBinaryReader stream, bool recursive, ref bool needToDecodeChildren) {
+            switch (expr.Opcode) {
+                case ExpressionEncoder.FakeOpcodes.read_prior_local: {
+                    expr.Opcode = Opcodes.get_local;
+                    expr.Body.U.u32 = MostRecentLocalIndex;
+                    return true;
+                }
+
+                case ExpressionEncoder.FakeOpcodes.ldc_i32_zero:
+                case ExpressionEncoder.FakeOpcodes.ldc_i32_one:
+                case ExpressionEncoder.FakeOpcodes.ldc_i32_two:
+                case ExpressionEncoder.FakeOpcodes.ldc_i32_minus_one: {
+                    expr.Body.U.i32 = ExpressionEncoder.FakeOpcodes.ReverseConstants[expr.Opcode];
+                    expr.Opcode = Opcodes.i32_const;
+                    return true;
+                }
+
+                case ExpressionEncoder.FakeOpcodes.i32_load_natural: {
+                    var offset = expr.Body.U.u32;
+                    expr.Opcode = Opcodes.i32_load;
+                    expr.Body.U.memory.offset = offset;
+                    expr.Body.U.memory.alignment_exponent = 2;
+                    return true;
+                }
+
+                case ExpressionEncoder.FakeOpcodes.i32_store_natural: {
+                    var offset = expr.Body.U.u32;
+                    expr.Opcode = Opcodes.i32_store;
+                    expr.Body.U.memory.offset = offset;
+                    expr.Body.U.memory.alignment_exponent = 2;
+                    return true;
+                }
+
+                default:
+                    throw new Exception ("Unhandled fake opcode " + expr.Opcode);
+                    return false;
+            }
         }
 
         private bool DecodeMemoryImmediate (uint natural_alignment, out ExpressionBody body) {
@@ -461,7 +513,7 @@ namespace WasmSaw {
         }
 
         private bool DecodeChildrenNonRecursive (List<Expression> target) {
-            var stack = new Stack<List<Expression>>();
+            var stack = new Stack<(List<Expression>, bool)>();
             var current = target;
 
             while (true) {
@@ -479,8 +531,13 @@ namespace WasmSaw {
                     if (stack.Count <= 0)
                         return true;
 
-                    var parent = stack.Pop();
-                    current = parent;
+                    bool wasElse = false;
+                    do {
+                        var tup = stack.Pop();
+                        current = tup.Item1;
+                        wasElse = tup.Item2;
+                    } while (wasElse);
+
                     continue;
                 }
 
@@ -488,7 +545,7 @@ namespace WasmSaw {
                     c.Body.Type |= ExpressionBody.Types.children;
                     c.Body.children = c.Body.children ?? new List<Expression>(16);
                     current.Add(c);
-                    stack.Push(current);
+                    stack.Push((current, c.Opcode == Opcodes.@else));
                     current = c.Body.children;
                     continue;
                 } else
