@@ -90,7 +90,6 @@ namespace WasmSaw {
              * 'multi-get'/'multi-set' opcodes i.e. | (a, b, c) = (mem[0], mem[4], mem[8]) |
              * 'get-and-store' opcode for the pattern | mem[x] = local |
              */
-               
         }
 
         private void WriteInternal (
