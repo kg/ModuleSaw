@@ -202,7 +202,9 @@ namespace Wasm.Model {
         i64_extend_32_s,
 
         PREFIX_sat = 0xfc,
-        PREFIX_atomic = 0xfe
+        PREFIX_atomic = 0xfe,
+        
+        optimized_out = 0xff
     }
 
     public static class OpcodesInfo {

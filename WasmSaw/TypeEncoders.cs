@@ -265,6 +265,7 @@ namespace WasmSaw {
 
                     Expression e;
 
+                    var originalCount = ModuleEncoder.ExpressionEncoder.NumWritten;
                     while (reader.TryReadExpression(out e)) {
                         if (!reader.TryReadExpressionBody(ref e))
                             throw new Exception("Failed to read body of " + e.Opcode);
@@ -277,8 +278,9 @@ namespace WasmSaw {
                     if (subStream.Position != subStream.Length)
                         throw new Exception("Stopped reading opcodes before end of function body");
 
+                    var finalCount = ModuleEncoder.ExpressionEncoder.NumWritten;
                     if (previous == Opcodes.end) {
-                        Builder.Write(reader.NumRead, functionExpressionCounts);
+                        Builder.Write(finalCount - originalCount, functionExpressionCounts);
                         return;
                     } else
                         throw new Exception("Found no end opcode in function body");

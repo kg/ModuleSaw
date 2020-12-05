@@ -189,12 +189,15 @@ namespace ModuleSaw {
 
                     writer.Write(BoundaryMarker3);
 
+                    // FIXME
+                    /*
                     if (seg.Length > StreamAlignmentThreshold) {
                         var paddedLength = ((seg.Length + StreamAlignment - 1) / StreamAlignment) * StreamAlignment;
                         var paddingLength = paddedLength - seg.Length;
                         for (int i = 0; i < paddingLength; i++)
                             writer.Write((byte)0);
                     }
+                    */
                 }
 
                 writer.Flush();

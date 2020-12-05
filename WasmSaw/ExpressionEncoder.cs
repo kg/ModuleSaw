@@ -8,11 +8,15 @@ using Wasm.Model;
 
 namespace WasmSaw {
     public class ExpressionEncoder {
+        public const bool EnableOptimizer = false;
+
         public readonly AbstractModuleBuilder Builder;
 
         private KeyedStreamWriter OpcodeStream, GlobalIndices, LocalIndices,
             MemoryAlignments, MemoryOffsets, BrTables, BlockTypes,
             FunctionIndices, TypeIndices, BreakDepths;
+
+        public int NumWritten = 0;
 
         // [prev, current, next, default(Expression)]
         private Expression[] WriteQueue = new Expression[4];
@@ -96,6 +100,7 @@ namespace WasmSaw {
             ref Expression e
         ) {
             OpcodeStream.Write((byte)e.Opcode);
+            NumWritten++;
 
             KeyedStreamWriter s = GetStreamForOpcode(e.Opcode);
 
@@ -139,25 +144,48 @@ namespace WasmSaw {
                 default:
                     throw new Exception("Not implemented");
             }
-
-            if ((e.Body.Type & ExpressionBody.Types.children) != 0) {
-                // HACK: The children were already pushed into the queue, so ignore them
-                /*
-                for (int i = 0, l = e.Body.children.Count; i < l; i++)
-                    Write(e.Body.children[i]);
-                */
-            }
         }
 
         public void Write (ref Expression e) {
             FlushQueue(WriteQueue, ref WriteQueueLength, false);
             WriteQueue[WriteQueueLength++] = e;
 
-            if ((e.Body.Type & ExpressionBody.Types.children) != 0) {
-                // Insert the children directly into the queue so they can be processed by the
-                //  peephole optimizer.
-                for (int i = 0, l = e.Body.children.Count; i < l; i++)
-                    Write(e.Body.children[i]);
+            if ((e.Body.Type & ExpressionBody.Types.children) != 0)
+                WriteChildren(e.Body.children);
+        }
+
+        private struct WriteState {
+            public List<Expression> list;
+            public int offset, count;
+        }
+
+        private void WriteChildren (List<Expression> children) {
+            if (children.Count <= 0)
+                return;
+
+            Stack<WriteState> stack = null;
+            var state = new WriteState { list = children, offset = 0, count = children.Count };
+
+            while ((state.offset < state.count) || ((stack != null) && (stack.Count > 0))) {
+                if (state.offset >= state.count) {
+                    if ((stack == null) || (stack.Count == 0))
+                        return;
+
+                    state = stack.Pop();
+                    continue;
+                }
+
+                FlushQueue(WriteQueue, ref WriteQueueLength, false);
+                var child = state.list[state.offset++];
+                WriteQueue[WriteQueueLength++] = child;
+
+                var subChildren = child.Body.children;
+                if ((subChildren != null) && (subChildren.Count > 0)) {
+                    if (stack == null)
+                        stack = new Stack<WriteState>();
+                    stack.Push(state);
+                    state = new WriteState { list = subChildren, count = subChildren.Count, offset = 0 };
+                }
             }
         }
 
@@ -267,17 +295,14 @@ namespace WasmSaw {
             if ((queue_length == 3) || force) {
                 // HACK: queue[3] is always default(Expression) to give us an easy way
                 //  to indirectly reference it
-                PeepholeOptimize(ref queue[3], ref queue[0], ref queue[1]);
-                for (int i = 1; i < queue_length; i++)
-                    PeepholeOptimize(ref queue[i - 1], ref queue[i], ref queue[i + 1]);
-
-                for (int i = 0; i < queue_length; i++) {
-                    // FIXME: Is this valid?
-                    if (queue[i].Opcode == Opcodes.nop)
-                        continue;
-
-                    WriteInternal(ref queue[i]);
+                if (EnableOptimizer) {
+                    PeepholeOptimize(ref queue[3], ref queue[0], ref queue[1]);
+                    for (int i = 1; i < queue_length; i++)
+                        PeepholeOptimize(ref queue[i - 1], ref queue[i], ref queue[i + 1]);
                 }
+
+                for (int i = 0; i < queue_length; i++)
+                    WriteInternal(ref queue[i]);
 
                 queue_length = 0;
 

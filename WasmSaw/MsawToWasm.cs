@@ -279,7 +279,7 @@ namespace WasmSaw {
             if (e.Opcode == Opcodes.call_indirect)
                 writer.Write((byte)0);
 
-            if (e.Body.children != null) {
+            if ((e.Body.children != null) && (e.Body.children.Count > 0)) {
                 Expression c;
                 for (int i = 0; i < e.Body.children.Count; i++) {
                     c = e.Body.children[i];
@@ -322,6 +322,7 @@ namespace WasmSaw {
             AbstractModuleReader amr, BinaryWriter writer, TypeDecoders td
         ) {
             var countStream = amr.Streams.Open("function_expression_count");
+            var expressionDecoder = td.Expression;
 
             var count = amr.ReadArrayLength();
             writer.WriteLEB(count);
@@ -340,16 +341,29 @@ namespace WasmSaw {
                 Check(countStream.ReadU32LEB(out uint expressionCount));
                 uint numEmitted = 0;
 
+                expressionDecoder.CurrentLimit = (int)expressionCount;
                 while (numEmitted < expressionCount) {
                     Expression e;
-                    if (!td.Expression.Decode(out e))
-                        throw new Exception("Failed decoding function body " + e.Opcode);
+                    var decodedBefore = expressionDecoder.NumDecoded;
+                    if (!expressionDecoder.Decode(out e))
+                        break;
+                        // throw new Exception("Failed decoding function body " + e.Opcode);
 
+                    var decodedAfter = expressionDecoder.NumDecoded;
+
+                    var emittedBefore = numEmitted;
                     EmitExpression(functionWriter, ref e, ref numEmitted);
+                    var emittedAfter = numEmitted;
+
+                    var numEmittedThisStep = emittedAfter - emittedBefore;
+                    var numDecodedThisStep = decodedAfter - decodedBefore;
+
+                    if (numEmittedThisStep != numDecodedThisStep)
+                        throw new Exception("Failed to emit proper number of expressions");
                 }
 
-                if (numEmitted > expressionCount)
-                    throw new Exception("Decoded too many expressions");
+                if (numEmitted != expressionCount)
+                    throw new Exception("Failed to decode correct number of expressions");
                 
                 functionWriter.Flush();
 
