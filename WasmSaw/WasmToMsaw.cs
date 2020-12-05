@@ -322,6 +322,7 @@ namespace WasmSaw {
                         CodeSection cs;
                         Program.Assert(reader.ReadCodeSection(out cs));
                         t.function_body.Encode(cs.bodies, CodeSegmentSplitInterval);
+                        Console.WriteLine("Encoded {0} expressions", t.function_body.ModuleEncoder.ExpressionEncoder.NumWritten);
                         break;
 
                     case SectionTypes.Data:

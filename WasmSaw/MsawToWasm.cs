@@ -402,6 +402,8 @@ namespace WasmSaw {
 
                 buffer.SetLength(0);
             }
+
+            Console.WriteLine("Decoded {0} expressions", expressionDecoder.NumDecoded);
         }
 
         private static void EmitDataSection (

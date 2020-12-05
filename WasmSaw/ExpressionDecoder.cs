@@ -89,7 +89,7 @@ namespace WasmSaw {
             if (recursive || !needToDecodeChildren)
                 e.State = ExpressionState.Initialized;
 
-            Console.WriteLine("< decoded {0}", e);
+            // Console.WriteLine("< decoded {0}", e);
 
             return true;
         }
@@ -528,11 +528,12 @@ namespace WasmSaw {
                     }
 
                     current.Add(c);
-                    if (stack.Count <= 0)
-                        return true;
 
                     bool wasElse = false;
                     do {
+                        if (stack.Count <= 0)
+                            return true;
+
                         var tup = stack.Pop();
                         current = tup.Item1;
                         wasElse = tup.Item2;

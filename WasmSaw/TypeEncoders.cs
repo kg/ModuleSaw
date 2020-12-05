@@ -265,8 +265,8 @@ namespace WasmSaw {
 
                     Expression e;
 
-                    Console.WriteLine();
-                    Console.WriteLine("-- {0:00000} ({1} byte(s))", value.Index, value.body_size);
+                    // Console.WriteLine();
+                    // Console.WriteLine("-- {0:00000} ({1} byte(s))", value.Index, value.body_size);
 
                     var originalDecoded = reader.NumRead;
                     var originalCount = ModuleEncoder.ExpressionEncoder.NumWritten;
