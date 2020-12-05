@@ -70,30 +70,6 @@ namespace Wasm.Model {
             return true;
         }
 
-        private bool GatherChildNodesUntil (ref ExpressionBody body, Predicate<Expression> pred, ExpressionReaderListener listener = null) {
-            // Reduce number of allocations
-
-            var initialDepth = Depth;
-            if (Depth >= 1100)
-                ;
-
-            while (true) {
-                Expression e;
-                if (!TryReadExpression(out e, listener))
-                    return false;
-
-                if (!TryReadExpressionBody(ref e, listener))
-                    return false;
-
-                body.children.Add(e);
-
-                if (pred(e) && (Depth == initialDepth))
-                    return true;
-            }
-        }
-
-        private int Depth = 0;
-
         public bool TryReadExpressionBody (ref Expression expr, ExpressionReaderListener listener = null) {
             bool needToReadChildren;
 
@@ -107,48 +83,50 @@ namespace Wasm.Model {
         }
 
         private bool ReadExpressionChildren (ref Expression expr, ExpressionReaderListener listener) {
-            try {
-                var result = new List<Expression>(16);
-                expr.Body.children = result;
-                expr.Body.Type |= ExpressionBody.Types.children;
-                var isIf = (expr.Opcode == Opcodes.@if);
+            var pseudostack = new List<Expression>();
+            var parent = expr;
+            Expression child;
 
-                Depth++;
-                switch (expr.Opcode) {
-                    case Opcodes.block:
-                    case Opcodes.loop:
-                        if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end, listener)) {
-                            listener?.EndBody(ref expr, true, false);
-                            return false;
-                        }
+            while (TryReadExpression(out child, listener)) {
+                if (!TryReadExpressionBodyNonRecursive(ref child, out bool needToReadChildren, listener)) {
+                    if (!needToReadChildren)
+                        // FIXME: Fire EndBody events
+                        return false;
 
-                        break;
-
-                    case Opcodes.@if:
-                        if (!GatherChildNodesUntil(
-                            ref expr.Body, 
-                            e => (e.Opcode == Opcodes.end) || (e.Opcode == Opcodes.@else),
-                            listener
-                        )) {
-                            listener?.EndBody(ref expr, true, false);
-                            return false;
-                        }
-
-                        break;
-
-                    case Opcodes.@else:
-                        if (!GatherChildNodesUntil(ref expr.Body, e => e.Opcode == Opcodes.end, listener)) {
-                            listener?.EndBody(ref expr, true, false);
-                            return false;
-                        }
-
-                        break;
-
-                    default:
-                        throw new NotImplementedException(expr.Opcode.ToString());
+                    pseudostack.Add(parent);
+                    parent = child;
+                    continue;
                 }
-            } finally {
-                Depth--;
+
+                parent.Body.children.Add(child);
+
+                // FIXME: Special-case handling for else?
+                if (child.Opcode == Opcodes.end) {
+                    parent.State = ExpressionState.Initialized;
+                    listener?.EndBody(ref parent, true, true);
+
+                    if (pseudostack.Count == 0) {
+                        expr.State = ExpressionState.Initialized;
+                        return true;
+                    }
+
+                    var outer = pseudostack[pseudostack.Count - 1];
+                    outer.Body.children.Add(parent);
+                    parent = outer;
+                    pseudostack.RemoveAt(pseudostack.Count - 1);
+                }
+            }
+
+            // The last opcode in a function body may be either 'end' or 'unreachable'
+            if (
+                (child.Opcode != Opcodes.end) && 
+                (child.Opcode != Opcodes.unreachable)
+            )
+                return false;
+            
+            for (int i = pseudostack.Count - 1; i >= 0; i--) {
+                var item = pseudostack[i];
+                listener?.EndBody(ref item, true, true);
             }
 
             return true;
@@ -164,11 +142,14 @@ namespace Wasm.Model {
                 case Opcodes.@if:
                     listener?.BeginBody(ref expr, true);
                     expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
-                    expr.Body.Type = ExpressionBody.Types.type;
+                    expr.Body.Type = ExpressionBody.Types.type | ExpressionBody.Types.children;
+                    expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;
                     return false;
                 case Opcodes.@else:
                     listener?.BeginBody(ref expr, true);
+                    expr.Body.Type = ExpressionBody.Types.children;
+                    expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;
                     return false;
                 default:
