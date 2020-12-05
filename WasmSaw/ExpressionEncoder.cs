@@ -120,7 +120,7 @@ namespace WasmSaw {
         private void WriteInternal (
             ref Expression e
         ) {
-            Console.WriteLine("> write {0}", e);
+            // Console.WriteLine("> write {0}", e);
             OpcodeStream.Write((byte)e.Opcode);
             NumWritten++;
 

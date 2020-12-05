@@ -68,7 +68,7 @@ namespace Wasm.Model {
 
             NumRead += 1;
 
-            Console.WriteLine("{1} read {0}", result, new string('<', Depth));
+            // Console.WriteLine("{1} read {0}", result, new string('<', Math.Min(Depth + 1, 32)));
             listener?.EndHeader(ref result, true);
             return true;
         }
