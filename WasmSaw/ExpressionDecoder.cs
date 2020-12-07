@@ -442,7 +442,7 @@ namespace WasmSaw {
             switch (expr.Opcode) {
                 case ExpressionEncoder.FakeOpcodes.read_prior_local: {
                     expr.Opcode = Opcodes.get_local;
-                    expr.Body.Type = ExpressionBody.Types.i32;
+                    expr.Body.Type = ExpressionBody.Types.u32;
                     expr.Body.U.u32 = MostRecentLocalIndex;
                     return true;
                 }

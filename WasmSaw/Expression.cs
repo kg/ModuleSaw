@@ -253,13 +253,24 @@ namespace Wasm.Model {
         public bool ValidateBody () {
             switch (Opcode) {
                 case Opcodes.i32_const:
-                    return (Body.Type == ExpressionBody.Types.i32);
+                    return (Body.Type == ExpressionBody.Types.i32) ||
+                        (Body.Type == ExpressionBody.Types.u32);
                 case Opcodes.i64_const:
                     return (Body.Type == ExpressionBody.Types.i64);
                 case Opcodes.f32_const:
                     return (Body.Type == ExpressionBody.Types.f32);
                 case Opcodes.f64_const:
                     return (Body.Type == ExpressionBody.Types.f64);
+                case Opcodes.get_local:
+                case Opcodes.set_local:
+                case Opcodes.tee_local:
+                case Opcodes.get_global:
+                case Opcodes.set_global:
+                    return (Body.Type == ExpressionBody.Types.u32);
+                case var o when (o >= Opcodes.i32_load) && (o <= Opcodes.i64_store32):
+                    return (Body.Type == ExpressionBody.Types.memory);
+                case var o when (o >= Opcodes.i32_eqz):
+                    return (Body.Type == ExpressionBody.Types.none);
                 default:
                     // FIXME
                     return true;
