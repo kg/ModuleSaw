@@ -232,6 +232,10 @@ namespace WasmSaw {
             ref uint numEmitted,
             bool recursive
         ) {
+            if ((byte)e.Opcode >= ExpressionEncoder.FakeOpcodes.FirstFakeOpcode)
+                throw new Exception();
+
+            // Console.WriteLine(((uint)e.Opcode).ToString("X2") + " " + e);
             writer.Write((byte)e.Opcode);
             numEmitted++;
 
@@ -262,6 +266,7 @@ namespace WasmSaw {
                     writer.WriteLEB(e.Body.U.memory.offset);
                     break;
                 case ExpressionBody.Types.type:
+                    // Console.WriteLine(((uint)e.Body.U.type).ToString("X2") + " " + e.Body.U.type);
                     writer.Write((byte)e.Body.U.type);
                     break;
                 case ExpressionBody.Types.br_table:
@@ -370,6 +375,9 @@ namespace WasmSaw {
 
                 Check(countStream.ReadU32LEB(out uint expressionCount));
                 uint numEmitted = 0;
+
+                // Console.WriteLine();
+                // Console.WriteLine("-- #{0}", i);
 
                 expressionDecoder.CurrentLimit = (int)expressionCount;
                 while (numEmitted < expressionCount) {

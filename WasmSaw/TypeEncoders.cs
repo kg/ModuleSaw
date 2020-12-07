@@ -274,6 +274,8 @@ namespace WasmSaw {
                         if (!reader.TryReadExpressionBody(ref e))
                             throw new Exception("Failed to read body of " + e.Opcode);
 
+                        Console.WriteLine(e);
+
                         ModuleEncoder.ExpressionEncoder.WriteBuffered(ref e);
                     }
 

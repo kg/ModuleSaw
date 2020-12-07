@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 namespace ModuleSaw {
     public static class VarintExtensions {
         public static void WriteLEB (this BinaryWriter writer, ulong value) {
+            // Console.Write($"{value:X8}u: ");
             do {
                 var b = (byte)(value & 0x7Ful);
                 value >>= 7;
@@ -18,7 +19,9 @@ namespace ModuleSaw {
                     b |= 0x80;
 
                 writer.Write(b);
+                // Console.Write(b.ToString("X2"));
             } while (value != 0);
+            // Console.WriteLine();
         }
 
         public static void WriteLEB (this BinaryWriter writer, long value) {
