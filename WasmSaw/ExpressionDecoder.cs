@@ -86,8 +86,13 @@ namespace WasmSaw {
                     return false;
             }
 
-            if (recursive || !needToDecodeChildren)
+            if (recursive || !needToDecodeChildren) {
                 e.State = ExpressionState.Initialized;
+#if DEBUG
+                if (!e.ValidateBody())
+                    throw new Exception("Decoded expression had an invalid body " + e);
+#endif
+            }
 
             // Console.WriteLine("< decoded {0}", e);
 
@@ -425,6 +430,11 @@ namespace WasmSaw {
             }
 
             expr.State = ExpressionState.Initialized;
+
+#if DEBUG
+            if (!expr.ValidateBody())
+                throw new Exception("Decoded expression had an invalid body " + expr);
+#endif
             return true;
         }
 
@@ -432,6 +442,7 @@ namespace WasmSaw {
             switch (expr.Opcode) {
                 case ExpressionEncoder.FakeOpcodes.read_prior_local: {
                     expr.Opcode = Opcodes.get_local;
+                    expr.Body.Type = ExpressionBody.Types.i32;
                     expr.Body.U.u32 = MostRecentLocalIndex;
                     return true;
                 }
@@ -441,6 +452,7 @@ namespace WasmSaw {
                 case ExpressionEncoder.FakeOpcodes.ldc_i32_two:
                 case ExpressionEncoder.FakeOpcodes.ldc_i32_minus_one: {
                     expr.Body.U.i32 = ExpressionEncoder.FakeOpcodes.ReverseConstants[expr.Opcode];
+                    expr.Body.Type = ExpressionBody.Types.i32;
                     expr.Opcode = Opcodes.i32_const;
                     return true;
                 }
@@ -448,6 +460,7 @@ namespace WasmSaw {
                 case ExpressionEncoder.FakeOpcodes.i32_load_natural: {
                     var offset = expr.Body.U.u32;
                     expr.Opcode = Opcodes.i32_load;
+                    expr.Body.Type = ExpressionBody.Types.memory;
                     expr.Body.U.memory.offset = offset;
                     expr.Body.U.memory.alignment_exponent = 2;
                     return true;
@@ -456,6 +469,7 @@ namespace WasmSaw {
                 case ExpressionEncoder.FakeOpcodes.i32_store_natural: {
                     var offset = expr.Body.U.u32;
                     expr.Opcode = Opcodes.i32_store;
+                    expr.Body.Type = ExpressionBody.Types.memory;
                     expr.Body.U.memory.offset = offset;
                     expr.Body.U.memory.alignment_exponent = 2;
                     return true;

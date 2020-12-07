@@ -249,6 +249,9 @@ namespace WasmSaw {
             }
 
             public override void Encode (ref function_body value) {
+                // Console.WriteLine();
+                // Console.WriteLine("-- #{0}", value.Index);
+
                 Builder.Write(value.body_size);
 
                 Builder.WriteArrayLength(value.locals);
@@ -274,7 +277,7 @@ namespace WasmSaw {
                         if (!reader.TryReadExpressionBody(ref e))
                             throw new Exception("Failed to read body of " + e.Opcode);
 
-                        Console.WriteLine(e);
+                        // Console.WriteLine(e);
 
                         ModuleEncoder.ExpressionEncoder.WriteBuffered(ref e);
                     }

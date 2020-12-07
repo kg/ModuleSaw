@@ -250,6 +250,22 @@ namespace Wasm.Model {
         public Opcodes Opcode;
         public ExpressionBody Body;
 
+        public bool ValidateBody () {
+            switch (Opcode) {
+                case Opcodes.i32_const:
+                    return (Body.Type == ExpressionBody.Types.i32);
+                case Opcodes.i64_const:
+                    return (Body.Type == ExpressionBody.Types.i64);
+                case Opcodes.f32_const:
+                    return (Body.Type == ExpressionBody.Types.f32);
+                case Opcodes.f64_const:
+                    return (Body.Type == ExpressionBody.Types.f64);
+                default:
+                    // FIXME
+                    return true;
+            }
+        }
+
         public override string ToString () {
             return string.Format("({0} {1})", Opcode, Body);
         }
@@ -303,6 +319,10 @@ namespace Wasm.Model {
 
         private object ExtractValue () {
             switch (Type) {
+                case Types.none:
+                    return "<none>";
+                case Types.u1:
+                    return U.u8;
                 case Types.u32:
                     return U.u32;
                 case Types.i32:
@@ -313,6 +333,10 @@ namespace Wasm.Model {
                     return U.f32;
                 case Types.f64:
                     return U.f64;
+                case Types.memory:
+                    return "<memory>";
+                case Types.type:
+                    return "<type " + U.type + ">";
                 default:
                     return "<unknown>";
             }

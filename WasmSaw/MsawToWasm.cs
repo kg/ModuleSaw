@@ -239,6 +239,11 @@ namespace WasmSaw {
             writer.Write((byte)e.Opcode);
             numEmitted++;
 
+#if DEBUG
+            if (!e.ValidateBody())
+                throw new Exception("Invalid body for expression " + e);
+#endif
+
             switch (e.Body.Type & ~ExpressionBody.Types.children) {
                 case ExpressionBody.Types.none:
                     break;
@@ -411,7 +416,7 @@ namespace WasmSaw {
                 buffer.SetLength(0);
             }
 
-            Console.WriteLine("Decoded {0} expressions", expressionDecoder.NumDecoded);
+            Console.WriteLine("Decoded {0} expressions from msaw module", expressionDecoder.NumDecoded);
         }
 
         private static void EmitDataSection (
