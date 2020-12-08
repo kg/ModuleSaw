@@ -1,11 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using ModuleSaw;
 
 namespace Wasm.Model {
+    public interface IExpressionVisitor {
+        void Visit (ref Expression e, int depth, out bool wantToVisitChildren);
+    }
+
     public enum OpcodePrefixes : byte {
         none = 0x00,
         sat = 0xfc,
@@ -244,6 +250,22 @@ namespace Wasm.Model {
         Initialized = 2
     }
 
+    public class ExpressionEmitVisitor : IExpressionVisitor {
+        public BinaryWriter Output { get; private set; }
+        public int Count { get; private set; }
+
+        public ExpressionEmitVisitor (BinaryWriter output) {
+            Output = output;
+        }
+
+        public void Visit (ref Expression e, int depth, out bool wantToVisitChildren) {
+            Count++;
+            Output.Write((byte)e.Opcode);
+            Expression.EmitBody(Output, ref e, out bool temp);
+            wantToVisitChildren = true;
+        }
+    }
+
     public struct Expression {
         public ExpressionState State;
 
@@ -277,6 +299,110 @@ namespace Wasm.Model {
             }
         }
 
+        public static int Emit (BinaryWriter output, ref Expression e) {
+            var visitor = new ExpressionEmitVisitor(output);
+            Visit(ref e, visitor);
+            return visitor.Count;
+        }
+
+        public static void EmitBody (BinaryWriter output, ref Expression e, out bool needToEmitChildren) {
+#if DEBUG
+            if (!e.ValidateBody())
+                throw new Exception("Invalid body for expression " + e);
+#endif
+
+            switch (e.Body.Type & ~ExpressionBody.Types.children) {
+                case ExpressionBody.Types.none:
+                    break;
+
+                case ExpressionBody.Types.u32:
+                    output.WriteLEB(e.Body.U.u32);
+                    break;
+                case ExpressionBody.Types.u1:
+                    output.Write((byte)e.Body.U.u32);
+                    break;
+                case ExpressionBody.Types.i64:
+                    output.WriteLEB(e.Body.U.i64);
+                    break;
+                case ExpressionBody.Types.i32:
+                    output.WriteLEB(e.Body.U.i32);
+                    break;
+                case ExpressionBody.Types.f64:
+                    output.Write(e.Body.U.f64);
+                    break;
+                case ExpressionBody.Types.f32:
+                    output.Write(e.Body.U.f32);
+                    break;
+                case ExpressionBody.Types.memory:
+                    output.WriteLEB(e.Body.U.memory.alignment_exponent);
+                    output.WriteLEB(e.Body.U.memory.offset);
+                    break;
+                case ExpressionBody.Types.type:
+                    // Console.WriteLine(((uint)e.Body.U.type).ToString("X2") + " " + e.Body.U.type);
+                    output.Write((byte)e.Body.U.type);
+                    break;
+                case ExpressionBody.Types.br_table:
+                    output.WriteLEB((uint)e.Body.br_table.target_table.Length);
+                    foreach (var t in e.Body.br_table.target_table)
+                        output.WriteLEB(t);
+                    output.WriteLEB(e.Body.br_table.default_target);
+
+                    break;
+
+                default:
+                    throw new Exception("Not implemented");
+            }
+
+            // HACK
+            if (e.Opcode == Opcodes.call_indirect)
+                output.Write((byte)0);
+
+            needToEmitChildren = (e.Body.children != null) && (e.Body.children.Count > 0);
+        }
+
+        public static void Visit (ref Expression e, IExpressionVisitor visitor) {
+            visitor.Visit(ref e, 0, out bool wantToVisitChildren);
+            if (wantToVisitChildren)
+                VisitChildren(ref e, visitor);
+        }
+
+        public static void VisitChildren (ref Expression e, IExpressionVisitor visitor) {
+            Stack<(List<Expression>, int)> stack = null;
+            var current = e.Body.children;
+            if (current == null)
+                return;
+
+            int i = 0;
+            while (true) {
+                if (i >= current.Count) {
+                    if ((stack == null) || (stack.Count <= 0))
+                        return;
+                    else {
+                        var tup = stack.Pop();
+                        current = tup.Item1;
+                        i = tup.Item2;
+                        continue;
+                    }
+                }
+
+                var c = current[i++];
+                var hasChildren = (c.Body.children != null) && (c.Body.children.Count > 0);
+                visitor.Visit(
+                    ref c, 
+                    (stack != null) ? stack.Count + 1 : 1, 
+                    out bool wantToVisitChildren
+                );
+                if (!hasChildren || !wantToVisitChildren)
+                    continue;
+
+                if (stack == null)
+                    stack = new Stack<(List<Expression>, int)>();
+                stack.Push((current, i));
+                current = c.Body.children;
+                i = 0;
+            }
+        }
+
         public override string ToString () {
             return string.Format("({0} {1})", Opcode, Body);
         }
@@ -297,6 +423,7 @@ namespace Wasm.Model {
             br_table,
 
             // An expression can have both an immediate and children so this is a flag
+            // TODO: Remove this
             children = 0x80,
         }
 

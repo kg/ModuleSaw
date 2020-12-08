@@ -217,115 +217,12 @@ namespace WasmSaw {
             }
         }
 
-        private static uint EmitInitExpression (
+        private static int EmitInitExpression (
             BinaryWriter writer, ref Expression e
         ) {
-            uint _2 = 0;
-            EmitExpression(writer, ref e, ref _2, true);
+            var result = Expression.Emit(writer, ref e);
             writer.Write((byte)Opcodes.end);
-            return _2;
-        }
-        
-        private static void EmitExpression (
-            BinaryWriter writer, 
-            ref Expression e, 
-            ref uint numEmitted,
-            bool recursive
-        ) {
-            if ((byte)e.Opcode >= ExpressionEncoder.FakeOpcodes.FirstFakeOpcode)
-                throw new Exception();
-
-            // Console.WriteLine(((uint)e.Opcode).ToString("X2") + " " + e);
-            writer.Write((byte)e.Opcode);
-            numEmitted++;
-
-#if DEBUG
-            if (!e.ValidateBody())
-                throw new Exception("Invalid body for expression " + e);
-#endif
-
-            switch (e.Body.Type & ~ExpressionBody.Types.children) {
-                case ExpressionBody.Types.none:
-                    break;
-
-                case ExpressionBody.Types.u32:
-                    writer.WriteLEB(e.Body.U.u32);
-                    break;
-                case ExpressionBody.Types.u1:
-                    writer.Write((byte)e.Body.U.u32);
-                    break;
-                case ExpressionBody.Types.i64:
-                    writer.WriteLEB(e.Body.U.i64);
-                    break;
-                case ExpressionBody.Types.i32:
-                    writer.WriteLEB(e.Body.U.i32);
-                    break;
-                case ExpressionBody.Types.f64:
-                    writer.Write(e.Body.U.f64);
-                    break;
-                case ExpressionBody.Types.f32:
-                    writer.Write(e.Body.U.f32);
-                    break;
-                case ExpressionBody.Types.memory:
-                    writer.WriteLEB(e.Body.U.memory.alignment_exponent);
-                    writer.WriteLEB(e.Body.U.memory.offset);
-                    break;
-                case ExpressionBody.Types.type:
-                    // Console.WriteLine(((uint)e.Body.U.type).ToString("X2") + " " + e.Body.U.type);
-                    writer.Write((byte)e.Body.U.type);
-                    break;
-                case ExpressionBody.Types.br_table:
-                    writer.WriteLEB((uint)e.Body.br_table.target_table.Length);
-                    foreach (var t in e.Body.br_table.target_table)
-                        writer.WriteLEB(t);
-                    writer.WriteLEB(e.Body.br_table.default_target);
-
-                    break;
-
-                default:
-                    throw new Exception("Not implemented");
-            }
-
-            // HACK
-            if (e.Opcode == Opcodes.call_indirect)
-                writer.Write((byte)0);
-
-            if (!recursive)
-                return;
-
-            if ((e.Body.children != null) && (e.Body.children.Count > 0))
-                EmitExpressionChildren(writer, ref e, ref numEmitted);
-        }
-
-        private static void EmitExpressionChildren (
-            BinaryWriter writer, 
-            ref Expression e, 
-            ref uint numEmitted
-        ) {
-            var stack = new Stack<(List<Expression>, int)>();
-            var current = e.Body.children;
-            int i = 0;
-            while (true) {
-                if (i >= current.Count) {
-                    if (stack.Count <= 0)
-                        return;
-                    else {
-                        var tup = stack.Pop();
-                        current = tup.Item1;
-                        i = tup.Item2;
-                        continue;
-                    }
-                }
-
-                var c = current[i++];
-                EmitExpression(writer, ref c, ref numEmitted, false);
-                if ((c.Body.children == null) || (c.Body.children.Count <= 0))
-                    continue;
-
-                stack.Push((current, i));
-                current = c.Body.children;
-                i = 0;
-            }
+            return result;
         }
 
         private static void EmitExportSection (
@@ -379,13 +276,13 @@ namespace WasmSaw {
                 }
 
                 Check(countStream.ReadU32LEB(out uint expressionCount));
-                uint numEmitted = 0;
+                var emitter = new ExpressionEmitVisitor(functionWriter);
 
                 // Console.WriteLine();
                 // Console.WriteLine("-- #{0}", i);
 
                 expressionDecoder.CurrentLimit = (int)expressionCount;
-                while (numEmitted < expressionCount) {
+                while (emitter.Count < expressionCount) {
                     Expression e;
                     var decodedBefore = expressionDecoder.NumDecoded;
                     if (!expressionDecoder.Decode(out e))
@@ -394,9 +291,9 @@ namespace WasmSaw {
 
                     var decodedAfter = expressionDecoder.NumDecoded;
 
-                    var emittedBefore = numEmitted;
-                    EmitExpression(functionWriter, ref e, ref numEmitted, true);
-                    var emittedAfter = numEmitted;
+                    var emittedBefore = emitter.Count;
+                    Expression.Visit(ref e, emitter);
+                    var emittedAfter = emitter.Count;
 
                     var numEmittedThisStep = emittedAfter - emittedBefore;
                     var numDecodedThisStep = decodedAfter - decodedBefore;
@@ -405,7 +302,7 @@ namespace WasmSaw {
                         throw new Exception("Failed to emit proper number of expressions");
                 }
 
-                if (numEmitted != expressionCount)
+                if (emitter.Count != expressionCount)
                     throw new Exception("Failed to decode correct number of expressions");
                 
                 functionWriter.Flush();

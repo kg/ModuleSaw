@@ -64,9 +64,6 @@ namespace Wasm.Model {
             }
 
             result.Opcode = (Opcodes)Reader.ReadByte();
-            // Console.WriteLine("< {0:X2} {1}", (byte)result.Opcode, result.Opcode);
-            if ((byte)result.Opcode >= WasmSaw.ExpressionEncoder.FakeOpcodes.FirstFakeOpcode)
-                throw new Exception();
             result.State = ExpressionState.BodyNotRead;
 
             NumRead += 1;
