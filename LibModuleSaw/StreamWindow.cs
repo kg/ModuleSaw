@@ -5,24 +5,28 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ModuleSaw {
     public static class StreamExtensions {
+        static ThreadLocal<byte[]> Buf = new ThreadLocal<byte[]>(() => new byte[1]);
+
         public static byte ReadByteButFast (this Stream s) {
-            byte b = 0;
-            var buf = MemoryMarshal.CreateSpan(ref b, 1);
+            if (s is StreamWindow)
+                return (byte)s.ReadByte();
+
+            var buf = Buf.Value;
             if (s.Read(buf) != 1)
                 throw new EndOfStreamException($"Hit end of stream while reading byte from {s}");
-            return b;
+            return buf[0];
         }
 
         public static byte ReadByteButFast (this BinaryReader br) {
-            byte b = 0;
-            var buf = MemoryMarshal.CreateSpan(ref b, 1);
+            var buf = Buf.Value;
             if (br.Read(buf) != 1)
                 throw new EndOfStreamException($"Hit end of stream while reading byte from {br}");
-            return b;
+            return buf[0];
         }
     }
 
@@ -32,6 +36,7 @@ namespace ModuleSaw {
 
         private readonly long Offset, _Length;
         private long _Position;
+        private byte[] ByteBuf = new byte[1];
 
         public StreamWindow (Stream baseStream, long offset, long length) {
             BaseStream = baseStream;
@@ -61,6 +66,13 @@ namespace ModuleSaw {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override void Flush () {
             throw new InvalidOperationException();
+        }
+
+        public override int ReadByte () {
+            if (Read(ByteBuf, 0, 1) != 1)
+                return -1;
+            else
+                return ByteBuf[0];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
