@@ -49,7 +49,7 @@ namespace Wasm.Model {
                     throw new Exception("Unsupported init_expr opcode:" + result.Opcode);
             }
 
-            return (Reader.ReadByteButFast() == (byte)Opcodes.end);
+            return (Reader.ReadByte() == (byte)Opcodes.end);
         }
 
         int Depth = 0;
@@ -63,7 +63,7 @@ namespace Wasm.Model {
                 return false;
             }
 
-            result.Opcode = (Opcodes)Reader.ReadByteButFast();
+            result.Opcode = (Opcodes)Reader.ReadByte();
             if (!OpcodesInfo.KnownOpcodes[(int)result.Opcode])
                 throw new Exception($"Unrecognized opcode {result.Opcode} 0x{(int)result.Opcode:X2}");
             result.State = ExpressionState.BodyNotRead;
@@ -165,7 +165,7 @@ namespace Wasm.Model {
                 case Opcodes.loop:
                 case Opcodes.@if:
                     listener?.BeginBody(ref expr, true);
-                    expr.Body.U.type = (LanguageTypes)Reader.ReadByteButFast();
+                    expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
                     expr.Body.Type = ExpressionBody.Types.type | ExpressionBody.Types.children;
                     expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;

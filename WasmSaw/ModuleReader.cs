@@ -32,7 +32,7 @@ namespace Wasm.Model {
             sh = default(SectionHeader);
 
             try {
-                var id = Reader.ReadByteButFast();
+                var id = Reader.ReadByte();
                 sh.id = (SectionTypes)id;
             } catch (EndOfStreamException) {
                 return false;
@@ -71,19 +71,19 @@ namespace Wasm.Model {
         }
 
         private LanguageTypes ReadLanguageType () {
-            return (LanguageTypes)Reader.ReadByteButFast();
+            return (LanguageTypes)Reader.ReadByte();
         }
 
         public bool ReadFuncType (out func_type ft) {
             bool valid = true;
 
             ft = default(func_type);
-            var form = Reader.ReadByteButFast();
+            var form = Reader.ReadByte();
             if (form != 0x60)
                 valid = false;
 
             ft.param_types = ReadList((i) => ReadLanguageType());
-            var return_count = Reader.ReadByteButFast();
+            var return_count = Reader.ReadByte();
             if (return_count == 1)
                 ft.return_type = ReadLanguageType();
             else if (return_count > 1)
@@ -104,7 +104,7 @@ namespace Wasm.Model {
         }
 
         private bool ReadResizableLimits (out resizable_limits rl) {
-            rl.flags = Reader.ReadByteButFast();
+            rl.flags = Reader.ReadByte();
             rl.initial = (uint)Reader.ReadLEBUInt();
             if ((rl.flags & 1) == 1)
                 rl.maximum = (uint)Reader.ReadLEBUInt();
@@ -125,7 +125,7 @@ namespace Wasm.Model {
 
         private bool ReadGlobalType (out global_type gt) {
             gt.content_type = ReadLanguageType();
-            gt.mutability = Reader.ReadByteButFast() != 0;
+            gt.mutability = Reader.ReadByte() != 0;
             // FIXME
             return true;
         }
@@ -135,7 +135,7 @@ namespace Wasm.Model {
                 var result = new import_entry {
                     module = Reader.ReadPString(),
                     field = Reader.ReadPString(),
-                    kind = (external_kind)Reader.ReadByteButFast()
+                    kind = (external_kind)Reader.ReadByte()
                 };
 
                 switch (result.kind) {
@@ -190,7 +190,7 @@ namespace Wasm.Model {
             exs.entries = ReadList((i) =>
                 new export_entry {
                     field = Reader.ReadPString(),
-                    kind = (external_kind)Reader.ReadByteButFast(),
+                    kind = (external_kind)Reader.ReadByte(),
                     index = (uint)Reader.ReadLEBUInt()
                 }
             );

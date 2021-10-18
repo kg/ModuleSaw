@@ -9,27 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace ModuleSaw {
-    public static class StreamExtensions {
-        static ThreadLocal<byte[]> Buf = new ThreadLocal<byte[]>(() => new byte[1]);
-
-        public static byte ReadByteButFast (this Stream s) {
-            if (s is StreamWindow)
-                return (byte)s.ReadByte();
-
-            var buf = Buf.Value;
-            if (s.Read(buf) != 1)
-                throw new EndOfStreamException($"Hit end of stream while reading byte from {s}");
-            return buf[0];
-        }
-
-        public static byte ReadByteButFast (this BinaryReader br) {
-            var buf = Buf.Value;
-            if (br.Read(buf) != 1)
-                throw new EndOfStreamException($"Hit end of stream while reading byte from {br}");
-            return buf[0];
-        }
-    }
-
     public class StreamWindow : Stream {
         public readonly Stream BaseStream;
         public readonly long OriginalPosition;
