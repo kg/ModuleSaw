@@ -60,7 +60,7 @@ namespace ModuleSaw {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override void Flush () {
-            BaseStream.Flush();
+            throw new InvalidOperationException();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

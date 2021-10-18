@@ -42,7 +42,9 @@ namespace Wasm.Model {
         f64 = 0x7c,
         anyfunc = 0x70,
         func = 0x60,
-        empty_block = 0x40
+        empty_block = 0x40,
+
+        INVALID = 0xFF
     }
 
     public struct SectionHeader {

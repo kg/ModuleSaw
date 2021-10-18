@@ -64,6 +64,8 @@ namespace Wasm.Model {
             }
 
             result.Opcode = (Opcodes)Reader.ReadByteButFast();
+            if (!OpcodesInfo.KnownOpcodes[(int)result.Opcode])
+                throw new Exception($"Unrecognized opcode {result.Opcode} 0x{(int)result.Opcode:X2}");
             result.State = ExpressionState.BodyNotRead;
 
             NumRead += 1;
@@ -145,13 +147,10 @@ namespace Wasm.Model {
         private bool TryReadExpressionBodyNonRecursive (ref Expression expr, out bool needToReadChildren, ExpressionReaderListener listener) {
             try {
                 return TryReadExpressionBodyNonRecursive_Impl(ref expr, out needToReadChildren, listener);
-            } catch (EndOfStreamException) {
-                throw;
-            } catch (Exception exc) {
-                Console.Error.WriteLine($"Error reading expression body: {exc.Message}");
+            } catch {
                 expr.State = ExpressionState.InitializedWithError;
                 needToReadChildren = false;
-                return false;
+                throw;
             }
         }
 
@@ -222,6 +221,9 @@ namespace Wasm.Model {
                     }
 
                     var target_count = (uint)operand_u;
+                    if (target_count > 32767)
+                        throw new Exception($"br_table had {target_count} targets");
+
                     var target_table = new uint[target_count];
                     for (var i = 0; i < target_count; i++) {
                         var lu = Reader.ReadLEBUInt();

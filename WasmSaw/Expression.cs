@@ -217,6 +217,8 @@ namespace Wasm.Model {
             FirstStore = Opcodes.i32_store,
             LastStore = Opcodes.i64_store32;
 
+        public static readonly bool[] KnownOpcodes = new bool[256];
+
         public static readonly Dictionary<Opcodes, uint> MemorySizeForOpcode = new Dictionary<Opcodes, uint> {
             { Opcodes.i32_load, 4 },
             { Opcodes.i64_load, 8 },
@@ -242,6 +244,11 @@ namespace Wasm.Model {
             { Opcodes.i64_store16, 2 },
             { Opcodes.i64_store32, 4 },
         };
+
+        static OpcodesInfo () {
+            foreach (var value in typeof(Opcodes).GetEnumValues())
+                KnownOpcodes[(int)(byte)value] = true;
+        }
     }
 
     public enum ExpressionState : byte {
