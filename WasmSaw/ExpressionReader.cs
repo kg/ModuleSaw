@@ -170,6 +170,8 @@ namespace Wasm.Model {
             }
 
             listener?.BeginBody(ref expr, false);
+            ulong? operand_u;
+            long? operand_l;
 
             switch (expr.Opcode) {
                 case Opcodes.nop:
@@ -188,13 +190,25 @@ namespace Wasm.Model {
                 case Opcodes.get_local:
                 case Opcodes.set_local:
                 case Opcodes.tee_local:
-                    expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+                    operand_u = Reader.ReadLEBUInt();
+                    if (!operand_u.HasValue) {
+                        readError = true;
+                        break;
+                    }
+
+                    expr.Body.U.u32 = (uint)operand_u;
                     expr.Body.Type = ExpressionBody.Types.u32;
 
                     break;
 
                 case Opcodes.br_table:
-                    var target_count = (uint)Reader.ReadLEBUInt();
+                    operand_u = Reader.ReadLEBUInt();
+                    if (!operand_u.HasValue) {
+                        readError = true;
+                        break;
+                    }
+
+                    var target_count = (uint)operand_u;
                     var target_table = new uint[target_count];
                     for (var i = 0; i < target_count; i++) {
                         var lu = Reader.ReadLEBUInt();
@@ -219,7 +233,13 @@ namespace Wasm.Model {
                     break;
 
                 case Opcodes.call_indirect:
-                    expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+                    operand_u = Reader.ReadLEBUInt();
+                    if (!operand_u.HasValue) {
+                        readError = true;
+                        break;
+                    }
+
+                    expr.Body.U.u32 = (uint)operand_u;
                     expr.Body.Type = ExpressionBody.Types.u32;
                     // HACK
                     var reserved = Reader.ReadLEBUInt();
@@ -227,22 +247,34 @@ namespace Wasm.Model {
                     break;
 
                 case Opcodes.i32_const:
-                    expr.Body.U.i32 = (int)Reader.ReadLEBInt();
+                    operand_l = Reader.ReadLEBInt();
+                    if (!operand_l.HasValue) {
+                        readError = true;
+                        break;
+                    }
+
+                    expr.Body.U.i32 = (int)operand_l;
                     expr.Body.Type = ExpressionBody.Types.i32;
                     break;
 
                 case Opcodes.i64_const:
-                    expr.Body.U.i64 = (int)Reader.ReadLEBInt();
+                    operand_l = Reader.ReadLEBInt();
+                    if (!operand_l.HasValue) {
+                        readError = true;
+                        break;
+                    }
+
+                    expr.Body.U.i64 = (int)operand_l;
                     expr.Body.Type = ExpressionBody.Types.i64;
                     break;
 
                 case Opcodes.f32_const:
-                    expr.Body.U.f32 = (int)Reader.ReadSingle();
+                    expr.Body.U.f32 = Reader.ReadSingle();
                     expr.Body.Type = ExpressionBody.Types.f32;
                     break;
 
                 case Opcodes.f64_const:
-                    expr.Body.U.f64 = (int)Reader.ReadDouble();
+                    expr.Body.U.f64 = Reader.ReadDouble();
                     expr.Body.Type = ExpressionBody.Types.f64;
                     break;
 
@@ -439,7 +471,13 @@ namespace Wasm.Model {
 
                 case Opcodes.grow_memory:
                 case Opcodes.current_memory:
-                    expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+                    operand_u = Reader.ReadLEBUInt();
+                    if (!operand_u.HasValue) {
+                        readError = true;
+                        break;
+                    }
+
+                    expr.Body.U.u32 = (uint)operand_u;
                     expr.Body.Type = ExpressionBody.Types.u1;
                     break;
 
