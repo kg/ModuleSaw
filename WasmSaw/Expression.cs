@@ -247,7 +247,8 @@ namespace Wasm.Model {
     public enum ExpressionState : byte {
         Uninitialized = 0,
         BodyNotRead = 1,
-        Initialized = 2
+        Initialized = 2,
+        InitializedWithError = 3
     }
 
     public class ExpressionEmitVisitor : IExpressionVisitor {

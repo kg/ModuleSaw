@@ -146,6 +146,8 @@ namespace Wasm.Model {
             if (expr.State == ExpressionState.Uninitialized)
                 throw new ArgumentException("Uninitialized expression");
 
+            bool readError = false;
+
             switch (expr.Opcode) {
                 case Opcodes.block:
                 case Opcodes.loop:
@@ -194,12 +196,23 @@ namespace Wasm.Model {
                 case Opcodes.br_table:
                     var target_count = (uint)Reader.ReadLEBUInt();
                     var target_table = new uint[target_count];
-                    for (var i = 0; i < target_count; i++)
-                        target_table[i] = (uint)Reader.ReadLEBUInt();
+                    for (var i = 0; i < target_count; i++) {
+                        var lu = Reader.ReadLEBUInt();
+                        if (!lu.HasValue) {
+                            readError = true;
+                            break;
+                        } else {
+                            target_table[i] = (uint)lu.Value;
+                        }
+                    }
+
+                    var dt = Reader.ReadLEBUInt();
+                    if (!dt.HasValue)
+                        readError = true;
 
                     expr.Body.br_table = new br_table_immediate {
                         target_table = target_table,
-                        default_target = (uint)Reader.ReadLEBUInt()
+                        default_target = (uint)(dt ?? 0)
                     };
 
                     expr.Body.Type = ExpressionBody.Types.br_table;
@@ -434,9 +447,9 @@ namespace Wasm.Model {
                     return false;
             }
 
-            expr.State = ExpressionState.Initialized;
-            listener?.EndBody(ref expr, false, true);
-            return true;
+            expr.State = readError ? ExpressionState.InitializedWithError : ExpressionState.Initialized;
+            listener?.EndBody(ref expr, false, !readError);
+            return !readError;
         }
 
         public bool ReadMemoryImmediate (uint natural_alignment, out memory_immediate memory) {
