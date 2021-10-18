@@ -3,10 +3,29 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ModuleSaw {
+    public static class StreamExtensions {
+        public static byte ReadByteButFast (this Stream s) {
+            byte b = 0;
+            var buf = MemoryMarshal.CreateSpan(ref b, 1);
+            if (s.Read(buf) != 1)
+                throw new EndOfStreamException($"Hit end of stream while reading byte from {s}");
+            return b;
+        }
+
+        public static byte ReadByteButFast (this BinaryReader br) {
+            byte b = 0;
+            var buf = MemoryMarshal.CreateSpan(ref b, 1);
+            if (br.Read(buf) != 1)
+                throw new EndOfStreamException($"Hit end of stream while reading byte from {br}");
+            return b;
+        }
+    }
+
     public class StreamWindow : Stream {
         public readonly Stream BaseStream;
         public readonly long OriginalPosition;

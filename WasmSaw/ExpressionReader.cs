@@ -49,7 +49,7 @@ namespace Wasm.Model {
                     throw new Exception("Unsupported init_expr opcode:" + result.Opcode);
             }
 
-            return (Reader.ReadByte() == (byte)Opcodes.end);
+            return (Reader.ReadByteButFast() == (byte)Opcodes.end);
         }
 
         int Depth = 0;
@@ -63,7 +63,7 @@ namespace Wasm.Model {
                 return false;
             }
 
-            result.Opcode = (Opcodes)Reader.ReadByte();
+            result.Opcode = (Opcodes)Reader.ReadByteButFast();
             result.State = ExpressionState.BodyNotRead;
 
             NumRead += 1;
@@ -143,6 +143,19 @@ namespace Wasm.Model {
         }
 
         private bool TryReadExpressionBodyNonRecursive (ref Expression expr, out bool needToReadChildren, ExpressionReaderListener listener) {
+            try {
+                return TryReadExpressionBodyNonRecursive_Impl(ref expr, out needToReadChildren, listener);
+            } catch (EndOfStreamException) {
+                throw;
+            } catch (Exception exc) {
+                Console.Error.WriteLine($"Error reading expression body: {exc.Message}");
+                expr.State = ExpressionState.InitializedWithError;
+                needToReadChildren = false;
+                return false;
+            }
+        }
+
+        private bool TryReadExpressionBodyNonRecursive_Impl (ref Expression expr, out bool needToReadChildren, ExpressionReaderListener listener) {
             if (expr.State == ExpressionState.Uninitialized)
                 throw new ArgumentException("Uninitialized expression");
 
@@ -153,7 +166,7 @@ namespace Wasm.Model {
                 case Opcodes.loop:
                 case Opcodes.@if:
                     listener?.BeginBody(ref expr, true);
-                    expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
+                    expr.Body.U.type = (LanguageTypes)Reader.ReadByteButFast();
                     expr.Body.Type = ExpressionBody.Types.type | ExpressionBody.Types.children;
                     expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;
@@ -487,12 +500,21 @@ namespace Wasm.Model {
 
             expr.State = readError ? ExpressionState.InitializedWithError : ExpressionState.Initialized;
             listener?.EndBody(ref expr, false, !readError);
+
+            if (readError)
+                throw new EndOfStreamException($"Hit EOF while reading {expr.Opcode}");
             return !readError;
         }
 
         public bool ReadMemoryImmediate (uint natural_alignment, out memory_immediate memory) {
-            memory.alignment_exponent = (uint)Reader.ReadLEBUInt();
-            memory.offset = (uint)Reader.ReadLEBUInt();
+            ulong? ae = Reader.ReadLEBUInt(), o = Reader.ReadLEBUInt();
+            if (!ae.HasValue || !o.HasValue) {
+                memory = default;
+                return false;
+            }
+
+            memory.alignment_exponent = (uint)ae;
+            memory.offset = (uint)o;
 
             // HACK: We want to encode memory immediates' alignments relative to the natural alignment
             //  of the load/store operation. Most load/store operations will be naturally aligned, so
