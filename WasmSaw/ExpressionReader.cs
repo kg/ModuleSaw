@@ -254,10 +254,14 @@ namespace Wasm.Model {
                         break;
                     }
 
-                    expr.Body.U.u32 = (uint)operand_u;
-                    expr.Body.Type = ExpressionBody.Types.u32;
+                    var imm = new call_indirect_immediate {
+                        sig_index = (uint)operand_u,
+                        table_index = (uint)Reader.ReadLEBUInt()
+                    };
+
+                    expr.Body.U.call_indirect = imm;
+                    expr.Body.Type = ExpressionBody.Types.call_indirect;
                     // HACK
-                    var reserved = Reader.ReadLEBUInt();
 
                     break;
 

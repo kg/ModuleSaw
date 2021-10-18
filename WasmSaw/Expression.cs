@@ -429,6 +429,7 @@ namespace Wasm.Model {
             memory,
             type,
             br_table,
+            call_indirect,
 
             // An expression can have both an immediate and children so this is a flag
             // TODO: Remove this
@@ -455,6 +456,8 @@ namespace Wasm.Model {
             public memory_immediate memory;
             [FieldOffset(0)]
             public LanguageTypes type;
+            [FieldOffset(0)]
+            public call_indirect_immediate call_indirect;
         }
 
         public Types Type;
@@ -511,6 +514,6 @@ namespace Wasm.Model {
 
     public struct call_indirect_immediate {
         public uint sig_index;
-        public uint reserved;
+        public uint table_index;
     }
 }
