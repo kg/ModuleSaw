@@ -106,8 +106,6 @@ namespace Wasm.Model {
         public uint body_size;
         public local_entry[] locals;
 
-        // HACK: Information on the stream it was read from
-        public Stream Stream;
         public long StreamOffset, StreamEnd;
     }
 

@@ -229,7 +229,6 @@ namespace Wasm.Model {
 
                 var result = new function_body {
                     Index = i,
-                    Stream = Reader.BaseStream,
                     body_size = (uint)bodySize,
                     locals = localEntries,
                     StreamOffset = codeOffset,

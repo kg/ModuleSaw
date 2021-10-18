@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ModuleSaw {
@@ -52,16 +53,16 @@ namespace ModuleSaw {
             WriteLEB(writer, (ulong)value);
         }
 
-        // HACK: Not thread-safe
-        private static byte[] LEBBuffer = new byte[10];
+        private static ThreadLocal<byte[]> LEBBuffer = new ThreadLocal<byte[]>(() => new byte[10]);
 
         public unsafe static ulong? ReadLEBUInt (this BinaryReader reader) {
             var br = reader.BaseStream;
-            var count = br.Read(LEBBuffer, 0, 10);
+            var buffer = LEBBuffer.Value;
+            var count = br.Read(buffer, 0, 10);
             if (count == 0)
                 return null;
 
-            fixed (byte* pBuffer = LEBBuffer) {
+            fixed (byte* pBuffer = buffer) {
                 var ok = ReadLEBUInt(pBuffer, (uint)count, out ulong result, out uint bytesRead);
                 br.Position -= (count - bytesRead);
                 if (ok)
@@ -97,11 +98,12 @@ namespace ModuleSaw {
 
         public unsafe static long? ReadLEBInt (this BinaryReader reader) {
             var br = reader.BaseStream;
-            var count = br.Read(LEBBuffer, 0, 10);
+            var buffer = LEBBuffer.Value;
+            var count = br.Read(buffer, 0, 10);
             if (count == 0)
                 return null;
 
-            fixed (byte* pBuffer = LEBBuffer) {
+            fixed (byte* pBuffer = buffer) {
                 var ok = ReadLEBInt(pBuffer, (uint)count, out long result, out uint bytesRead);
                 br.Position -= (count - bytesRead);
                 if (ok)
