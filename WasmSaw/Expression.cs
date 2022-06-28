@@ -12,13 +12,7 @@ namespace Wasm.Model {
         void Visit (ref Expression e, int depth, out bool wantToVisitChildren);
     }
 
-    public enum OpcodePrefixes : byte {
-        none = 0x00,
-        sat = 0xfc,
-        atomic = 0xfe
-    }
-
-    public enum Opcodes : byte {
+    public enum Opcodes : uint {
         unreachable = 0x00,
         nop,
         block,
@@ -207,8 +201,112 @@ namespace Wasm.Model {
         i64_extend_16_s,
         i64_extend_32_s,
 
-        PREFIX_sat = 0xfc,
-        PREFIX_atomic = 0xfe
+        ref_null = 0xd0,
+        ref_is_null,
+        ref_func,
+
+        PREFIX_simd = 0xfd,
+        PREFIX_sat_or_bulk = 0xfc,
+        PREFIX_atomic = 0xfe,
+
+        _MULTIBYTE = 0x100,
+
+        _FIRST_SAT_OR_BULK = i32_trunc_sat_f32_s,
+        i32_trunc_sat_f32_s = 0xFC00,
+        i32_trunc_sat_f32_u = 0xFC01,
+        i32_trunc_sat_f64_s = 0xFC02,
+        i32_trunc_sat_f64_u = 0xFC03,
+        i64_trunc_sat_f32_s = 0xFC04,
+        i64_trunc_sat_f32_u = 0xFC05,
+        i64_trunc_sat_f64_s = 0xFC06,
+        i64_trunc_sat_f64_u = 0xFC07,
+        memory_init = 0xFC08,
+        data_drop = 0xFC09,
+        memory_copy = 0xFC0A,
+        memory_fill = 0xFC0B,
+        table_init = 0xFC0C,
+        elem_drop = 0xFC0D,
+        table_copy = 0xFC0E,
+            /*
+| `memory.init` | `0xfc 0x08` | `segment:varuint32`, `memory:0x00` | copy from a passive data segment to linear memory |
+| `data.drop` | `0xfc 0x09` | `segment:varuint32` | prevent further use of passive data segment |
+| `memory.copy` | `0xfc 0x0a` | `memory_dst:0x00` `memory_src:0x00` | copy from one region of linear memory to another region |
+| `memory.fill` | `0xfc 0x0b` | `memory:0x00` | fill a region of linear memory with a given byte value |
+| `table.init` | `0xfc 0x0c` | `segment:varuint32`, `table:0x00` | copy from a passive element segment to a table |
+| `elem.drop` | `0xfc 0x0d` | `segment:varuint32` | prevent further use of a passive element segment |
+| `table.copy` | `0xfc 0x0e` | `table_dst:0x00` `table_src:0x00` | copy from one region of a table to another region |
+            */
+        _LAST_SAT_OR_BULK = table_copy,
+
+        _FIRST_ATOMIC = AtomicNotify,
+        AtomicNotify = 0xFE00,
+        I32AtomicWait = 0xFE01,
+        I64AtomicWait = 0xFE02,
+        I32AtomicLoad = 0xFE10,
+        I32AtomicLoad8U = 0xFE12,
+        I32AtomicLoad16U = 0xFE13,
+        I32AtomicStore = 0xFE17,
+        I32AtomicStore8U = 0xFE19,
+        I32AtomicStore16U = 0xFE1a,
+        I32AtomicAdd = 0xFE1e,
+        I32AtomicAdd8U = 0xFE20,
+        I32AtomicAdd16U = 0xFE21,
+        I32AtomicSub = 0xFE25,
+        I32AtomicSub8U = 0xFE27,
+        I32AtomicSub16U = 0xFE28,
+        I32AtomicAnd = 0xFE2c,
+        I32AtomicAnd8U = 0xFE2e,
+        I32AtomicAnd16U = 0xFE2f,
+        I32AtomicOr = 0xFE33,
+        I32AtomicOr8U = 0xFE35,
+        I32AtomicOr16U = 0xFE36,
+        I32AtomicXor = 0xFE3a,
+        I32AtomicXor8U = 0xFE3c,
+        I32AtomicXor16U = 0xFE3d,
+        I32AtomicExchange = 0xFE41,
+        I32AtomicExchange8U = 0xFE43,
+        I32AtomicExchange16U = 0xFE44,
+        I32AtomicCompareExchange = 0xFE48,
+        I32AtomicCompareExchange8U = 0xFE4a,
+        I32AtomicCompareExchange16U = 0xFE4b,
+
+        I64AtomicLoad = 0xFE11,
+        I64AtomicLoad8U = 0xFE14,
+        I64AtomicLoad16U = 0xFE15,
+        I64AtomicLoad32U = 0xFE16,
+        I64AtomicStore = 0xFE18,
+        I64AtomicStore8U = 0xFE1b,
+        I64AtomicStore16U = 0xFE1c,
+        I64AtomicStore32U = 0xFE1d,
+        I64AtomicAdd = 0xFE1f,
+        I64AtomicAdd8U = 0xFE22,
+        I64AtomicAdd16U = 0xFE23,
+        I64AtomicAdd32U = 0xFE24,
+        I64AtomicSub = 0xFE26,
+        I64AtomicSub8U = 0xFE29,
+        I64AtomicSub16U = 0xFE2a,
+        I64AtomicSub32U = 0xFE2b,
+        I64AtomicAnd = 0xFE2d,
+        I64AtomicAnd8U = 0xFE30,
+        I64AtomicAnd16U = 0xFE31,
+        I64AtomicAnd32U = 0xFE32,
+        I64AtomicOr = 0xFE34,
+        I64AtomicOr8U = 0xFE37,
+        I64AtomicOr16U = 0xFE38,
+        I64AtomicOr32U = 0xFE39,
+        I64AtomicXor = 0xFE3b,
+        I64AtomicXor8U = 0xFE3e,
+        I64AtomicXor16U = 0xFE3f,
+        I64AtomicXor32U = 0xFE40,
+        I64AtomicExchange = 0xFE42,
+        I64AtomicExchange8U = 0xFE45,
+        I64AtomicExchange16U = 0xFE46,
+        I64AtomicExchange32U = 0xFE47,
+        I64AtomicCompareExchange = 0xFE49,
+        I64AtomicCompareExchange8U = 0xFE4c,
+        I64AtomicCompareExchange16U = 0xFE4d,
+        I64AtomicCompareExchange32U = 0xFE4e,
+        _LAST_ATOMIC = I64AtomicCompareExchange32U,
     }
 
     public static class OpcodesInfo {
@@ -217,7 +315,13 @@ namespace Wasm.Model {
             FirstStore = Opcodes.i32_store,
             LastStore = Opcodes.i64_store32;
 
-        public static readonly bool[] KnownOpcodes = new bool[256];
+        public static readonly bool[] KnownOpcodes = new bool[0xFFFF];
+
+        public static readonly HashSet<int> Prefixes = new HashSet<int> {
+            (int)Opcodes.PREFIX_simd,
+            (int)Opcodes.PREFIX_atomic,
+            (int)Opcodes.PREFIX_sat_or_bulk,
+        };
 
         public static readonly Dictionary<Opcodes, uint> MemorySizeForOpcode = new Dictionary<Opcodes, uint> {
             { Opcodes.i32_load, 4 },
@@ -247,7 +351,7 @@ namespace Wasm.Model {
 
         static OpcodesInfo () {
             foreach (var value in typeof(Opcodes).GetEnumValues())
-                KnownOpcodes[(int)(byte)value] = true;
+                KnownOpcodes[(uint)value] = true;
         }
     }
 
@@ -458,6 +562,7 @@ namespace Wasm.Model {
             public LanguageTypes type;
             [FieldOffset(0)]
             public call_indirect_immediate call_indirect;
+
         }
 
         public Types Type;

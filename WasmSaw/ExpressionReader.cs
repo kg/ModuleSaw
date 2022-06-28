@@ -63,16 +63,39 @@ namespace Wasm.Model {
                 return false;
             }
 
-            result.Opcode = (Opcodes)Reader.ReadByte();
-            if (!OpcodesInfo.KnownOpcodes[(int)result.Opcode])
-                throw new Exception($"Unrecognized opcode {result.Opcode} 0x{(int)result.Opcode:X2}");
-            result.State = ExpressionState.BodyNotRead;
+            var opcode = (int)Reader.ReadByte();
+            if (OpcodesInfo.Prefixes.Contains(opcode)) {
+                ReadPrefix(ref result, (Opcodes)opcode);
+            } else {
+                result.Opcode = (Opcodes)opcode;
+                if (!OpcodesInfo.KnownOpcodes[opcode])
+                    throw new Exception($"Unrecognized opcode {result.Opcode} 0x{opcode:X2}");
+            }
 
+            result.State = ExpressionState.BodyNotRead;
             NumRead += 1;
 
             // Console.WriteLine("{1} read {0}", result, new string('<', Math.Min(Depth + 1, 32)));
             listener?.EndHeader(ref result, true);
             return true;
+        }
+
+        private void ReadPrefix(ref Expression result, Opcodes prefix) {
+            uint extra = (uint)(Reader.ReadLEBUInt().Value) | ((uint)prefix << 8);
+            switch (prefix) {
+                case Opcodes.PREFIX_sat_or_bulk:
+                    if ((extra < (uint)Opcodes._FIRST_SAT_OR_BULK) || (extra > (uint)Opcodes._LAST_SAT_OR_BULK))
+                        throw new Exception($"Unrecognized saturating/bulk opcode {extra:X4}");
+                    result.Opcode = (Opcodes)extra;
+                    break;
+                case Opcodes.PREFIX_atomic:
+                    if ((extra < (uint)Opcodes._FIRST_ATOMIC) || (extra > (uint)Opcodes._LAST_ATOMIC))
+                        throw new Exception($"Unrecognized atomic opcode {extra:X4}");
+                    result.Opcode = (Opcodes)extra;
+                    break;
+                default:
+                    throw new Exception($"Unimplemented prefix {prefix}");
+            }
         }
 
         public bool TryReadExpressionBody (ref Expression expr, ExpressionReaderListener listener = null) {
@@ -467,19 +490,16 @@ namespace Wasm.Model {
                 case Opcodes.i64_eqz:
                     break;
                 
-                // multibyte opcodes not in the spec... 😑
-                /*
-                case Opcodes.i32_trunc_s_sat_f32:
-                case Opcodes.i32_trunc_u_sat_f32:
-                case Opcodes.i32_trunc_s_sat_f64:
-                case Opcodes.i32_trunc_u_sat_f64:
-                case Opcodes.i64_trunc_s_sat_f32:
-                case Opcodes.i64_trunc_u_sat_f32:
-                case Opcodes.i64_trunc_s_sat_f64:
-                case Opcodes.i64_trunc_u_sat_f64:
+                case Opcodes.i32_trunc_sat_f32_s:
+                case Opcodes.i32_trunc_sat_f32_u:
+                case Opcodes.i32_trunc_sat_f64_s:
+                case Opcodes.i32_trunc_sat_f64_u:
+                case Opcodes.i64_trunc_sat_f32_s:
+                case Opcodes.i64_trunc_sat_f32_u:
+                case Opcodes.i64_trunc_sat_f64_s:
+                case Opcodes.i64_trunc_sat_f64_u:
                     // convert
                     return false;
-                */
 
                 case Opcodes.i32_extend_8_s:
                 case Opcodes.i32_extend_16_s:
@@ -500,7 +520,37 @@ namespace Wasm.Model {
                     expr.Body.Type = ExpressionBody.Types.u1;
                     break;
 
+                case Opcodes.memory_init:
+                case Opcodes.data_drop:
+                case Opcodes.table_init:
+                    var selector = Reader.ReadLEBUInt();
+                    if (!selector.HasValue) {
+                        readError = true;
+                        break;
+                    }
+
+                    if ((expr.Opcode == Opcodes.memory_init) || (expr.Opcode == Opcodes.table_init)) {
+                        if (Reader.ReadByte() != 0) {
+                            readError = true;
+                            break;
+                        }
+                    }
+                    expr.Body.U.u32 = (uint)selector;
+                    expr.Body.Type = ExpressionBody.Types.u32;
+                    break;
+
+                case Opcodes.memory_copy:
+                    if ((Reader.ReadByte() != 0) || (Reader.ReadByte() != 0))
+                        readError = true;
+                    break;
+
+                case Opcodes.memory_fill:
+                    if (Reader.ReadByte() != 0)
+                        readError = true;
+                    break;
+
                 default:
+                    Console.Error.WriteLine($"Do not know how to read body of opcode {expr.Opcode}");
                     return false;
             }
 

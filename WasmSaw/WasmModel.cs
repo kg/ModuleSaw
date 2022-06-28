@@ -115,6 +115,7 @@ namespace Wasm.Model {
     }
 
     public struct data_segment {
+        public uint mode;
         public uint index;
         public Expression offset;
         public uint size;

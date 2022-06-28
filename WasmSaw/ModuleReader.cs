@@ -248,20 +248,44 @@ namespace Wasm.Model {
 
         public bool ReadDataSection (out DataSection ds) {
             ds.entries = ReadList((i) => {
-                var index = Reader.ReadLEBUInt();
-                // FIXME: Error handling
                 Expression offset;
-                ExpressionReader.TryReadInitExpr(out offset);
-                var size = Reader.ReadLEBUInt();
+                uint memidx = 0;
+                var mode = Reader.ReadLEBUInt();
+                switch (mode) {
+                    case 0:
+                        if (!ExpressionReader.TryReadInitExpr(out offset))
+                            throw new Exception("Failed to decode data section offset");
+                        break;
+                    case 1:
+                        offset = new Expression { 
+                            Opcode = Opcodes.i32_const, 
+                            Body = { 
+                                U = { u32 = 0 }, 
+                                Type = ExpressionBody.Types.u32 
+                            } 
+                        };
+                        break;
+                    case 2:
+                        memidx = (uint)Reader.ReadLEBUInt();
+                        if (!ExpressionReader.TryReadInitExpr(out offset))
+                            throw new Exception("Failed to decode data section offset");
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException($"Unexpected data section mode {mode}");
+                }
+                var vecsize = Reader.ReadLEBUInt();
+                if (!vecsize.HasValue)
+                    throw new Exception("Failed to read data section size");
+                // FIXME: Error handling
                 var dataOffset = Reader.BaseStream.Position;
-
-                Reader.BaseStream.Seek((long)size, SeekOrigin.Current);
+                Reader.BaseStream.Seek((long)vecsize, SeekOrigin.Current);
 
                 return new data_segment {
-                    index = (uint)index,
+                    index = memidx,
                     offset = offset,
-                    size = (uint)size,
-                    data_offset = dataOffset
+                    size = (uint)vecsize,
+                    data_offset = dataOffset,
+                    mode = (uint)mode
                 };
             });
 
