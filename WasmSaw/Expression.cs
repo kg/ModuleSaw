@@ -242,6 +242,7 @@ namespace Wasm.Model {
         AtomicNotify = 0xFE00,
         I32AtomicWait = 0xFE01,
         I64AtomicWait = 0xFE02,
+        AtomicFence = 0xFE03,
         I32AtomicLoad = 0xFE10,
         I32AtomicLoad8U = 0xFE12,
         I32AtomicLoad16U = 0xFE13,
