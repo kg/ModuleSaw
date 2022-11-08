@@ -522,7 +522,6 @@ namespace Wasm.Model {
     }
 
     public struct ExpressionBody {
-        [Flags]
         public enum Types : byte {
             none,
             u32,
