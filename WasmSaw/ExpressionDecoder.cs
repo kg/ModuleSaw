@@ -493,7 +493,7 @@ namespace WasmSaw {
             ) {
                 var ae = mem.EXT_natural_exponent + mem.EXT_relative_alignment_exponent;
                 // FIXME
-                if (ae < 0)
+                if (ae < 0) 
                     throw new Exception();
 
                 mem.alignment_exponent = (uint)ae;
