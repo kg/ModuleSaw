@@ -41,7 +41,6 @@
     <Compile Include="AbstractModuleReader.cs" />
     <Compile Include="ArrayBinaryReader.cs" />
     <Compile Include="KeyedStream.cs" />
-    <Compile Include="StreamWindow.cs" />
     <Compile Include="Varint.cs" />
   </ItemGroup>
   <ItemGroup>

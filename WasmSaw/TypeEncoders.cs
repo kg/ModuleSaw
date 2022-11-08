@@ -241,6 +241,8 @@ namespace WasmSaw {
         }
 
         public class function_bodyEncoder : TypeEncoder<function_body> {
+            public MemoryStream SourceStream { get; set; }
+
             private KeyedStreamWriter locals, functionExpressionCounts;
 
             public function_bodyEncoder (ModuleEncoder moduleEncoder) : base(moduleEncoder) {
@@ -251,6 +253,8 @@ namespace WasmSaw {
             public override void Encode (ref function_body value) {
                 // Console.WriteLine();
                 // Console.WriteLine("-- #{0}", value.Index);
+                if (SourceStream == null)
+                    throw new NullReferenceException("SourceStream must be set");
 
                 Builder.Write(value.body_size);
 
@@ -261,7 +265,7 @@ namespace WasmSaw {
                 }
 
                 // HACK: Decode the source function body and encode it into the modulebuilder on the fly
-                using (var subStream = new StreamWindow(value.Stream, value.StreamOffset, value.StreamEnd - value.StreamOffset)) {
+                using (var subStream = new MemoryStream(SourceStream.GetBuffer(), (int)value.StreamOffset, (int)(value.StreamEnd - value.StreamOffset), false)) {
                     var reader = new ExpressionReader(new BinaryReader(subStream));
 
                     Opcodes previous = Opcodes.end;

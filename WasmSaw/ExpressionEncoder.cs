@@ -139,6 +139,7 @@ namespace WasmSaw {
                 case ExpressionBody.Types.i64:
                     Builder.Write(e.Body.U.i64, s);
                     break;
+                case ExpressionBody.Types.call_indirect:
                 case ExpressionBody.Types.i32:
                     Builder.Write(e.Body.U.i32, s);
                     break;
@@ -164,7 +165,7 @@ namespace WasmSaw {
                     break;
 
                 default:
-                    throw new Exception("Not implemented");
+                    throw new Exception($"Not implemented: {e.Body.Type}");
             }
         }
 

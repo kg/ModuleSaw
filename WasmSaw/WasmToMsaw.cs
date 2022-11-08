@@ -99,7 +99,7 @@ namespace WasmSaw {
                                     localsSize += (int)(GetSizeForLanguageType(local.type) * local.count);
                                     numLocals += (int)local.count;
                                 }
-                                var linearStackSize = GetLinearStackSizeForFunction(fb, type, br, writer);
+                                var linearStackSize = GetLinearStackSizeForFunction(fb, type, (MemoryStream)br.BaseStream, writer);
 
                                 data.Add((fb.Index, type.param_types.Length, numLocals, localsSize, linearStackSize, fb.body_size));
                             }));
@@ -169,10 +169,15 @@ namespace WasmSaw {
                 Body = { U = { i32 = i }, Type = ExpressionBody.Types.i32 }
             };
         }
+        private static Stream GetFunctionBodyStream (byte[] bytes, function_body function) {
+            var size = (int)(function.StreamEnd - function.StreamOffset);
+            var result = new MemoryStream(bytes, (int)function.StreamOffset, size, false);
+            return result;
+        }
 
-        private static int GetLinearStackSizeForFunction (function_body fb, func_type type, BinaryReader br, StreamWriter writer) {
+        private static int GetLinearStackSizeForFunction (function_body fb, func_type type, MemoryStream source, StreamWriter writer) {
             try {
-                using (var subStream = new StreamWindow(fb.Stream, fb.StreamOffset, fb.StreamEnd - fb.StreamOffset)) {
+                using (var subStream = GetFunctionBodyStream(source.GetBuffer(), fb)) {
                     var reader = new ExpressionReader(new BinaryReader(subStream));
 
                     Expression expr;
@@ -258,6 +263,7 @@ namespace WasmSaw {
         }
 
         private static void StreamingConvert (BinaryReader wasm, AbstractModuleBuilder amb) {
+            var ms = (MemoryStream)wasm.BaseStream;
             var reader = new ModuleReader(wasm);
             var encoder = new ModuleEncoder(amb);
 
@@ -321,6 +327,7 @@ namespace WasmSaw {
                     case SectionTypes.Code:
                         CodeSection cs;
                         Program.Assert(reader.ReadCodeSection(out cs));
+                        t.function_body.SourceStream = ms;
                         t.function_body.Encode(cs.bodies, CodeSegmentSplitInterval);
                         Console.WriteLine("Encoded {0} expressions", t.function_body.ModuleEncoder.ExpressionEncoder.NumWritten);
                         break;
@@ -334,7 +341,7 @@ namespace WasmSaw {
                         dataStream.Flush();
 
                         foreach (var ent in ds.entries) {
-                            using (var subStream = new StreamWindow(wasm.BaseStream, ent.data_offset, ent.size))
+                            using (var subStream = new MemoryStream(ms.GetBuffer(), (int)ent.data_offset, (int)ent.size, false))
                                 subStream.CopyTo(dataStream.BaseStream);
                         }
                         break;
@@ -344,7 +351,7 @@ namespace WasmSaw {
                         amb.Write(sh.payload_len, s);
 
                         s = amb.GetStream("unknown_section_data");
-                        using (var src = new StreamWindow(wasm.BaseStream, sh.StreamHeaderStart, sh.payload_len))
+                        using (var src = new MemoryStream(ms.GetBuffer(), (int)sh.StreamHeaderStart, (int)sh.payload_len, false))
                             src.CopyTo(s.Stream);
 
                         wasm.BaseStream.Seek(sh.StreamPayloadEnd, SeekOrigin.Begin);

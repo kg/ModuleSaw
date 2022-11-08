@@ -184,7 +184,8 @@ namespace ModuleSaw {
                     writer.Write((uint)streamIndex);
                     writer.Write((uint)seg.Index);
                     writer.Write(seg.Length);
-                    using (var window = new StreamWindow(s.Stream, seg.Offset, seg.Length))
+                    // FIXME: Account for any offset and not just GetBuffer
+                    using (var window = new MemoryStream(s.Stream.GetBuffer(), (int)seg.Offset, (int)seg.Length, false))
                         window.CopyTo(writer.BaseStream);
 
                     writer.Write(BoundaryMarker3);
