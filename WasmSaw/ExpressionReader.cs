@@ -93,6 +93,9 @@ namespace Wasm.Model {
                         throw new Exception($"Unrecognized atomic opcode {extra:X4}");
                     result.Opcode = (Opcodes)extra;
                     break;
+                case Opcodes.PREFIX_simd:
+                    result.Opcode = (Opcodes)extra;
+                    break;
                 default:
                     throw new Exception($"Unimplemented prefix {prefix}");
             }
@@ -187,12 +190,14 @@ namespace Wasm.Model {
                 case Opcodes.block:
                 case Opcodes.loop:
                 case Opcodes.@if:
+                case Opcodes.try_:
                     listener?.BeginBody(ref expr, true);
                     expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
                     expr.Body.Type = ExpressionBody.Types.type | ExpressionBody.Types.children;
                     expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;
                     return false;
+                case Opcodes.catch_all:
                 case Opcodes.@else:
                     listener?.BeginBody(ref expr, true);
                     expr.Body.Type = ExpressionBody.Types.children;
@@ -334,6 +339,7 @@ namespace Wasm.Model {
                 case Opcodes.i64_load:
                 case Opcodes.f32_load:
                 case Opcodes.f64_load:
+                case Opcodes.v128_load:
                     expr.Body.Type = ExpressionBody.Types.memory;
                     if (!ReadMemoryImmediate(OpcodesInfo.MemorySizeForOpcode[expr.Opcode], out expr.Body.U.memory)) {
                         listener?.EndBody(ref expr, false, false);
@@ -351,6 +357,7 @@ namespace Wasm.Model {
                 case Opcodes.i64_store:
                 case Opcodes.f32_store:
                 case Opcodes.f64_store:
+                case Opcodes.v128_store:
                     expr.Body.Type = ExpressionBody.Types.memory;
                     if (!ReadMemoryImmediate(OpcodesInfo.MemorySizeForOpcode[expr.Opcode], out expr.Body.U.memory)) {
                         listener?.EndBody(ref expr, false, false);
