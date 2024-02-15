@@ -782,6 +782,7 @@ namespace Wasm.Model {
             type,
             br_table,
             call_indirect,
+            v128,
 
             // An expression can have both an immediate and children so this is a flag
             // TODO: Remove this
@@ -810,12 +811,12 @@ namespace Wasm.Model {
             public LanguageTypes type;
             [FieldOffset(0)]
             public call_indirect_immediate call_indirect;
-
         }
 
         public Types Type;
 
         public Union U;
+        public byte[] v128;
         public br_table_immediate br_table;
         public List<Expression> children;
 

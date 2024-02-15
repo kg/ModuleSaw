@@ -204,6 +204,14 @@ namespace Wasm.Model {
                     expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;
                     return false;
+                case Opcodes.catch_:
+                    listener?.BeginBody(ref expr, true);
+                    // tag
+                    expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
+                    expr.Body.Type = ExpressionBody.Types.u32 | ExpressionBody.Types.children;
+                    expr.Body.children = new List<Expression>(16);
+                    needToReadChildren = true;
+                    return false;
                 default:
                     needToReadChildren = false;
                     break;
@@ -222,6 +230,11 @@ namespace Wasm.Model {
                 case Opcodes.select:
                     break;
 
+                case Opcodes.v128_const:
+                    expr.Body.v128 = Reader.ReadBytes(16);
+                    expr.Body.Type = ExpressionBody.Types.v128;
+                    break;
+
                 case Opcodes.call:
                 case Opcodes.br:
                 case Opcodes.br_if:
@@ -230,6 +243,8 @@ namespace Wasm.Model {
                 case Opcodes.get_local:
                 case Opcodes.set_local:
                 case Opcodes.tee_local:
+                case Opcodes.rethrow_:
+                case Opcodes.throw_:
                     operand_u = Reader.ReadLEBUInt();
                     if (!operand_u.HasValue) {
                         readError = true;
@@ -557,8 +572,12 @@ namespace Wasm.Model {
                     break;
 
                 default:
-                    Console.Error.WriteLine($"Do not know how to read body of opcode {expr.Opcode}");
-                    return false;
+                    if ((expr.Opcode >= Opcodes.i8x16_eq) && (expr.Opcode <= Opcodes.f32x4_convert_i32x4_u)) {
+                        break;
+                    } else {
+                        Console.Error.WriteLine($"Do not know how to read body of opcode {expr.Opcode}");
+                        return false;
+                    }
             }
 
             expr.State = readError ? ExpressionState.InitializedWithError : ExpressionState.Initialized;
