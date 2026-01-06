@@ -67,7 +67,7 @@ namespace Wasm.Model {
         public TItem[] ReadList<TItem> (Func<uint, TItem> readItem) {
             var count = Reader.ReadLEBUInt();
             if (!count.HasValue)
-                return null;
+                return Array.Empty<TItem>();
 
             string ws = null;
             ReadDepth++;
@@ -122,7 +122,7 @@ namespace Wasm.Model {
                 return ft;
             });
 
-            return ts.entries != null;
+            return true;
         }
 
         private bool ReadResizableLimits (out resizable_limits rl) {
@@ -178,7 +178,7 @@ namespace Wasm.Model {
                 return result;
             });
 
-            return ims.entries != null;
+            return true;
         }
 
         public bool ReadTableSection (out TableSection tbs) {
@@ -188,7 +188,7 @@ namespace Wasm.Model {
                 return tt;
             });
 
-            return tbs.entries != null;
+            return true;
         }
 
         public bool ReadFunctionSection (out FunctionSection fs) {
