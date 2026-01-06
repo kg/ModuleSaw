@@ -47,7 +47,7 @@ namespace Wasm.Model {
         INVALID = 0xFF
     }
 
-    public struct SectionHeader {
+    public record struct SectionHeader {
         public SectionTypes id;
         public uint payload_len;
         public string name;
@@ -100,7 +100,7 @@ namespace Wasm.Model {
         public data_segment[] entries;
     }
 
-    public struct function_body {
+    public record struct function_body {
         public uint Index;
 
         public uint body_size;
@@ -109,12 +109,12 @@ namespace Wasm.Model {
         public long StreamOffset, StreamEnd;
     }
 
-    public struct local_entry {
+    public record struct local_entry {
         public uint count;
         public LanguageTypes type;
     }
 
-    public struct data_segment {
+    public record struct data_segment {
         public uint mode;
         public uint index;
         public Expression offset;
@@ -124,24 +124,24 @@ namespace Wasm.Model {
         public long data_offset;
     }
 
-    public struct elem_segment {
+    public record struct elem_segment {
         public uint index;
         public Expression offset;
         public uint[] elems;
     }
 
-    public struct export_entry {
+    public record struct export_entry {
         public string field;
         public external_kind kind;
         public uint index;
     }
 
-    public struct global_variable {
+    public record struct global_variable {
         public global_type type;
         public Expression init;
     }
 
-    public struct import_entry {
+    public record struct import_entry {
         [StructLayout(LayoutKind.Explicit)]
         public struct TypeUnion {
             [FieldOffset(0)]
@@ -160,28 +160,28 @@ namespace Wasm.Model {
         public TypeUnion type;
     }
 
-    public struct func_type {
+    public record struct func_type {
         // Always -0x20?
         // public sbyte form;
         public LanguageTypes[] param_types;
         public LanguageTypes return_type;
     }
 
-    public struct global_type {
+    public record struct global_type {
         public LanguageTypes content_type;
         public bool mutability;
     }
 
-    public struct table_type {
+    public record struct table_type {
         public LanguageTypes element_type;
         public resizable_limits limits;
     }
 
-    public struct memory_type {
+    public record struct memory_type {
         public resizable_limits limits;
     }
 
-    public struct resizable_limits {
+    public record struct resizable_limits {
         public byte flags;
         public uint initial;
         public uint maximum;

@@ -8,6 +8,7 @@ using ModuleSaw;
 
 namespace Wasm.Model {
     public class ModuleReader {
+        public bool Tracing;
         public readonly BinaryReader Reader;
         public readonly ExpressionReader ExpressionReader;
 
@@ -61,16 +62,34 @@ namespace Wasm.Model {
             return true;
         }
 
+        public static int ReadDepth;
+
         public TItem[] ReadList<TItem> (Func<uint, TItem> readItem) {
             var count = Reader.ReadLEBUInt();
             if (!count.HasValue)
                 return null;
 
-            var result = new TItem[count.Value];
-            for (uint i = 0; i < result.Length; i++)
-                result[i] = readItem(i);
+            string ws = null;
+            ReadDepth++;
+            try {
+                var result = new TItem[count.Value];
+                for (uint i = 0; i < result.Length; i++) {
+                    try {
+                        result[i] = readItem(i);
+                        if (Tracing) {
+                            if (ws == null)
+                                ws = new string(' ', ReadDepth);
+                            Console.WriteLine($"{ws}{typeof(TItem)} #{i+1}/{count.Value}: {result[i]}");
+                        }
+                    } catch (Exception exc) {
+                        throw new Exception($"Error reading {typeof(TItem)} #{i+1}/{count.Value}", exc);
+                    }
+                }
 
-            return result;
+                return result;
+            } finally {
+                ReadDepth--;
+            }
         }
 
         private LanguageTypes ReadLanguageType () {
