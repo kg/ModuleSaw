@@ -64,8 +64,10 @@ namespace Wasm.Model {
         public import_entry[] entries;
     }
 
+    public readonly record struct func_type_index (uint index);
+
     public struct FunctionSection {
-        public uint[] types;
+        public func_type_index[] types;
     }
 
     public struct TableSection {

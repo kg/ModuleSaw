@@ -192,7 +192,7 @@ namespace Wasm.Model {
         }
 
         public bool ReadFunctionSection (out FunctionSection fs) {
-            fs.types = ReadList((i) => (uint)Reader.ReadLEBUInt());
+            fs.types = ReadList((i) => new func_type_index((uint)Reader.ReadLEBUInt()));
 
             return fs.types != null;
         }
