@@ -72,6 +72,18 @@ namespace Wasm.Model {
                     throw new Exception($"Unrecognized opcode {result.Opcode} 0x{opcode:X2}");
             }
 
+            switch (result.Opcode) {
+                case Opcodes.block:
+                case Opcodes.loop:
+                case Opcodes.@if:
+                case Opcodes.try_:
+                    result.Body.U.type = (LanguageTypes)Reader.ReadByte();
+                    result.Body.Type = ExpressionBody.Types.type | ExpressionBody.Types.children;
+                    break;
+                default:
+                    break;
+            }
+
             result.State = ExpressionState.BodyNotRead;
             NumRead += 1;
 
@@ -192,8 +204,6 @@ namespace Wasm.Model {
                 case Opcodes.@if:
                 case Opcodes.try_:
                     listener?.BeginBody(ref expr, true);
-                    expr.Body.U.type = (LanguageTypes)Reader.ReadByte();
-                    expr.Body.Type = ExpressionBody.Types.type | ExpressionBody.Types.children;
                     expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;
                     return false;
