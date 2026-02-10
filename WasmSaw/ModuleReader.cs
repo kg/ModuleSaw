@@ -270,7 +270,7 @@ namespace Wasm.Model {
 
         public bool ReadDataSection (out DataSection ds) {
             ds.entries = ReadList((i) => {
-                Expression offset;
+                Expression[] offset;
                 uint memidx = 0;
                 var mode = Reader.ReadLEBUInt();
                 switch (mode) {
@@ -279,13 +279,13 @@ namespace Wasm.Model {
                             throw new Exception("Failed to decode data section offset");
                         break;
                     case 1:
-                        offset = new Expression { 
+                        offset = [new Expression { 
                             Opcode = Opcodes.i32_const, 
                             Body = { 
                                 U = { u32 = 0 }, 
                                 Type = ExpressionBody.Types.u32 
                             } 
-                        };
+                        }];
                         break;
                     case 2:
                         memidx = (uint)Reader.ReadLEBUInt();

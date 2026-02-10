@@ -119,7 +119,7 @@ namespace Wasm.Model {
     public record struct data_segment {
         public uint mode;
         public uint index;
-        public Expression offset;
+        public Expression[] offset;
         public uint size;
 
         // Position inside stream
@@ -128,7 +128,7 @@ namespace Wasm.Model {
 
     public record struct elem_segment {
         public uint index;
-        public Expression offset;
+        public Expression[] offset;
         public uint[] elems;
     }
 
@@ -140,7 +140,7 @@ namespace Wasm.Model {
 
     public record struct global_variable {
         public global_type type;
-        public Expression init;
+        public Expression[] init;
     }
 
     public record struct import_entry {

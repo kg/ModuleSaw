@@ -28,28 +28,22 @@ namespace Wasm.Model {
             BaseStreamLength = BaseStream.Length;
         }
 
-        public bool TryReadInitExpr (out Expression result) {
-            if (!TryReadExpression(out result))
-                return false;
+        public bool TryReadInitExpr (out Expression[] result) {
+            var list = new List<Expression>();
+            result = null;
 
-            if (!TryReadExpressionBody(ref result)) {
-                // HACK
-                throw new Exception("Failed to read body of " + result.Opcode);
-            }
-
-            switch (result.Opcode) {
-                case Opcodes.f32_const:
-                case Opcodes.f64_const:
-                case Opcodes.i32_const:
-                case Opcodes.i64_const:
-                case Opcodes.get_global:
+            while (true) {
+                if (!TryReadExpression(out var expr))
+                    return false;
+                if (!TryReadExpressionBody(ref expr))
+                    return false;
+                if (expr.Opcode == Opcodes.end)
                     break;
-
-                default:
-                    throw new Exception("Unsupported init_expr opcode:" + result.Opcode);
+                list.Add(expr);
             }
 
-            return (Reader.ReadByte() == (byte)Opcodes.end);
+            result = list.ToArray();
+            return result.Length > 0;
         }
 
         int Depth = 0;
