@@ -40,6 +40,8 @@ namespace Wasm.Model {
         i64 = 0x7e,
         f32 = 0x7d,
         f64 = 0x7c,
+        v128 = 0x7b,
+
         anyfunc = 0x70,
         func = 0x60,
         empty_block = 0x40,
