@@ -20,11 +20,11 @@ namespace Wasm.Model {
         @if,
         @else,
         
-        try_ = 0x06,
-        catch_,
-        catch_all = 0x19,
+        try_legacy = 0x06,
+        catch_legacy = 0x07,
         throw_ = 0x08,
-        rethrow_ = 0x09,
+        rethrow_legacy = 0x09,
+        throw_ref = 0x0a,
 
         end = 0x0b,
         br,
@@ -33,15 +33,35 @@ namespace Wasm.Model {
         @return,
         call,
         call_indirect,
+        return_call,
+        return_call_indirect,
+        call_ref,
+        return_call_ref,
 
+        // reserved
+        // reserved
+        // reserved
+        // reserved
+
+        catch_all_legacy = 0x19,
         drop = 0x1a,
         select,
+        select_t,
+
+        // reserved
+        // reserved
+
+        try_table = 0x1f,
 
         get_local = 0x20,
         set_local,
         tee_local,
         get_global,
         set_global,
+        get_table,
+        set_table,
+
+        // reserved
 
         i32_load = 0x28,
         i64_load,
@@ -817,6 +837,7 @@ namespace Wasm.Model {
 
         public Union U;
         public byte[] v128;
+        public try_table_immediate try_table;
         public br_table_immediate br_table;
         public List<Expression> children;
 
@@ -853,12 +874,23 @@ namespace Wasm.Model {
         }
     }
 
-    public struct br_table_immediate {
+    public record struct br_table_immediate {
         public uint[] target_table;
         public uint default_target;
     }
 
-    public struct memory_immediate {
+    public record struct try_table_catch {
+        public bool is_ref;
+        public uint tagidx, labelidx;
+
+        public bool is_catch_all => tagidx == uint.MaxValue;
+    }
+
+    public record struct try_table_immediate {
+        public try_table_catch[] catches;
+    }
+
+    public record struct memory_immediate {
         public uint alignment_exponent;
         public uint offset;
 
@@ -866,7 +898,7 @@ namespace Wasm.Model {
         public int EXT_relative_alignment_exponent;
     }
 
-    public struct call_indirect_immediate {
+    public record struct call_indirect_immediate {
         public uint sig_index;
         public uint table_index;
     }

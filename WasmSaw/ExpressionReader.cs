@@ -70,7 +70,8 @@ namespace Wasm.Model {
                 case Opcodes.block:
                 case Opcodes.loop:
                 case Opcodes.@if:
-                case Opcodes.try_:
+                case Opcodes.try_legacy:
+                case Opcodes.try_table:
                     result.Body.U.type = (LanguageTypes)Reader.ReadByte();
                     result.Body.Type = ExpressionBody.Types.type | ExpressionBody.Types.children;
                     break;
@@ -196,19 +197,53 @@ namespace Wasm.Model {
                 case Opcodes.block:
                 case Opcodes.loop:
                 case Opcodes.@if:
-                case Opcodes.try_:
+                case Opcodes.try_legacy:
                     listener?.BeginBody(ref expr, true);
                     expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;
                     return false;
-                case Opcodes.catch_all:
+                case Opcodes.try_table:
+                {
+                    listener?.BeginBody(ref expr, true);
+                    expr.Body.children = new List<Expression>(16);
+                    needToReadChildren = true;
+
+                    var catchCount = Reader.ReadLEBUInt();
+                    if (!catchCount.HasValue) {
+                        readError = true;
+                        return false;
+                    }
+                    var catches = new try_table_catch[catchCount.Value];
+                    for (int i = 0; i < catches.Length; i++) {
+                        ref var item = ref catches[i];
+                        var selector = Reader.ReadByte();
+                        switch (selector) {
+                            case 0x00:
+                            case 0x01:
+                                item.is_ref = (selector == 0x01);
+                                item.tagidx = (uint)Reader.ReadLEBUInt();
+                                item.labelidx = (uint)Reader.ReadLEBUInt();
+                                break;
+
+                            case 0x02:
+                            case 0x03:
+                                item.is_ref = (selector == 0x03);
+                                item.tagidx = uint.MaxValue;
+                                item.labelidx = (uint)Reader.ReadLEBUInt();
+                                break;
+                        }
+                    }
+                    expr.Body.try_table = new try_table_immediate { catches = catches };
+                    return false;
+                }
+                case Opcodes.catch_all_legacy:
                 case Opcodes.@else:
                     listener?.BeginBody(ref expr, true);
                     expr.Body.Type = ExpressionBody.Types.children;
                     expr.Body.children = new List<Expression>(16);
                     needToReadChildren = true;
                     return false;
-                case Opcodes.catch_:
+                case Opcodes.catch_legacy:
                     listener?.BeginBody(ref expr, true);
                     // tag
                     expr.Body.U.u32 = (uint)Reader.ReadLEBUInt();
@@ -247,7 +282,7 @@ namespace Wasm.Model {
                 case Opcodes.get_local:
                 case Opcodes.set_local:
                 case Opcodes.tee_local:
-                case Opcodes.rethrow_:
+                case Opcodes.rethrow_legacy:
                 case Opcodes.throw_:
                     operand_u = Reader.ReadLEBUInt();
                     if (!operand_u.HasValue) {
