@@ -41,7 +41,7 @@ namespace Wasm.Model {
         // reserved
         // reserved
         // reserved
-        // reserved
+        delegate_legacy = 0x18,
 
         catch_all_legacy = 0x19,
         drop = 0x1a,
