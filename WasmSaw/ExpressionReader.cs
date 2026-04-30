@@ -35,6 +35,10 @@ namespace Wasm.Model {
             while (true) {
                 if (!TryReadExpression(out var expr))
                     return false;
+                if ((expr.Opcode == Opcodes.unreachable) && (list.Count == 0)) {
+                    result = null;
+                    return true;
+                }
                 if (!TryReadExpressionBody(ref expr))
                     return false;
                 if (expr.Opcode == Opcodes.end)
